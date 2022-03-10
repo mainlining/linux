@@ -215,6 +215,15 @@ static const struct inv_mpu6050_hw hw_info[] = {
 		.startup_time = {INV_MPU6500_GYRO_STARTUP_TIME, INV_MPU6500_ACCEL_STARTUP_TIME},
 	},
 	{
+		.whoami = INV_ICM20607_WHOAMI_VALUE,
+		.name = "ICM20607",
+		.reg = &reg_set_icm20602,
+		.config = &chip_config_6500,
+		.fifo_size = 1008,
+		.temp = {INV_ICM20608_TEMP_OFFSET, INV_ICM20608_TEMP_SCALE},
+		.startup_time = {INV_ICM20602_GYRO_STARTUP_TIME, INV_ICM20602_ACCEL_STARTUP_TIME},
+	},
+	{
 		.whoami = INV_ICM20608_WHOAMI_VALUE,
 		.name = "ICM20608",
 		.reg = &reg_set_6500,
