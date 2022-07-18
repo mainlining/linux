@@ -4726,6 +4726,8 @@ static struct of_device_id fts_of_match_table[] = {
 	{},
 };
 
+MODULE_DEVICE_TABLE(of, fts_of_match_table);
+
 #ifdef I2C_INTERFACE
 static const struct i2c_device_id fts_device_id[] = {
 	{ FTS_TS_DRV_NAME, 0 },
@@ -4741,6 +4743,7 @@ static struct i2c_driver fts_i2c_driver = {
 	.remove			= fts_remove,
 	.id_table		= fts_device_id,
 };
+module_i2c_driver(fts_i2c_driver);
 #else
 static struct spi_driver fts_spi_driver = {
 	.driver			= {
@@ -4756,29 +4759,29 @@ static struct spi_driver fts_spi_driver = {
 
 
 
-static int __init fts_driver_init(void)
-{
-#ifdef I2C_INTERFACE
-	return i2c_add_driver(&fts_i2c_driver);
-#else
-	return spi_register_driver(&fts_spi_driver);
-#endif
-}
+// static int __init fts_driver_init(void)
+// {
+// #ifdef I2C_INTERFACE
+// 	return i2c_add_driver(&fts_i2c_driver);
+// #else
+// 	return spi_register_driver(&fts_spi_driver);
+// #endif
+// }
 
-static void __exit fts_driver_exit(void)
-{
-	pr_debug("%s\n", __func__);
-#ifdef I2C_INTERFACE
-	i2c_del_driver(&fts_i2c_driver);
-#else
-	spi_unregister_driver(&fts_spi_driver);
-#endif
-}
+// static void __exit fts_driver_exit(void)
+// {
+// 	pr_debug("%s\n", __func__);
+// #ifdef I2C_INTERFACE
+// 	i2c_del_driver(&fts_i2c_driver);
+// #else
+// 	spi_unregister_driver(&fts_spi_driver);
+// #endif
+// }
 
 
 MODULE_DESCRIPTION("STMicroelectronics MultiTouch IC Driver");
 MODULE_AUTHOR("STMicroelectronics");
 MODULE_LICENSE("GPL");
 
-late_initcall(fts_driver_init);
-module_exit(fts_driver_exit);
+//late_initcall(fts_driver_init);
+//module_exit(fts_driver_exit);
