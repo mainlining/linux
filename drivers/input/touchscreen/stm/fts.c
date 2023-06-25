@@ -4239,7 +4239,7 @@ static int parse_dt(struct device *dev, struct fts_hw_platform_data *bdata)
 	bdata->switch_gpio = of_get_named_gpio(np, "st,switch_gpio", 0);
 	pr_debug("switch_gpio = %d\n", bdata->switch_gpio);
 
-	bdata->irq_gpio = of_get_named_gpio_flags(np, "st,irq-gpio", 0, NULL);
+	bdata->irq_gpio = of_get_named_gpio(np, "st,irq-gpio", 0);
 
 	pr_debug("irq_gpio = %d\n", bdata->irq_gpio);
 
@@ -4265,9 +4265,8 @@ static int parse_dt(struct device *dev, struct fts_hw_platform_data *bdata)
 	}
 
 	if (of_property_read_bool(np, "st,reset-gpio")) {
-		bdata->reset_gpio = of_get_named_gpio_flags(np,
-							    "st,reset-gpio", 0,
-							    NULL);
+		bdata->reset_gpio = of_get_named_gpio(np,
+							    "st,reset-gpio", 0);
 		pr_debug("reset_gpio =%d\n", bdata->reset_gpio);
 	} else
 		bdata->reset_gpio = GPIO_NOT_DEFINED;
@@ -4300,7 +4299,7 @@ static int parse_dt(struct device *dev, struct fts_hw_platform_data *bdata)
   * to the linux input subsystem etc.
   */
 #ifdef I2C_INTERFACE
-static int fts_probe(struct i2c_client *client, const struct i2c_device_id *idp)
+static int fts_probe(struct i2c_client *client)
 {
 #else
 static int fts_probe(struct spi_device *client)
@@ -4654,7 +4653,7 @@ ProbeErrorExit_0:
   * This function is called when the driver need to be removed.
   */
 #ifdef I2C_INTERFACE
-static int fts_remove(struct i2c_client *client)
+static void fts_remove(struct i2c_client *client)
 {
 #else
 static int fts_remove(struct spi_device *client)
@@ -4711,8 +4710,6 @@ static int fts_remove(struct spi_device *client)
 
 	/* free all */
 	kfree(info);
-
-	return OK;
 }
 
 /**
