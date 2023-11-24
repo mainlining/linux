@@ -3050,12 +3050,14 @@ static int wcd938x_soc_codec_probe(struct snd_soc_component *component)
 	unsigned long time_left;
 	int ret, i;
 
+	dev_warn(dev, "DBG waiting for tx init...\n");
 	time_left = wait_for_completion_timeout(&tx_sdw_dev->initialization_complete,
-						msecs_to_jiffies(2000));
+						msecs_to_jiffies(20000));
 	if (!time_left) {
 		dev_err(dev, "soundwire device init timeout\n");
 		return -ETIMEDOUT;
 	}
+	dev_warn(dev, "DBG got tx init...\n");
 
 	snd_soc_component_init_regmap(component, wcd938x->regmap);
 
