@@ -76,9 +76,9 @@
 		 * but given the same address every time. Hard code it as this address is
 		 * where the modem firmware expects it to be.
 		 */
-		rmtfs_mem: memory@fde01000 {
+		rmtfs_mem: memory@fe201000 {
 			compatible = "qcom,rmtfs-mem";
-			reg = <0 0xfde01000 0 0x600000>;
+			reg = <0 0xfe201000 0 0x600000>;
 			no-map;
 
 			qcom,client-id = <1>;
