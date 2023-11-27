@@ -87,9 +87,29 @@
 	};
 };
 
+&dispcc {
+	status = "okay";
+};
+
 &ipa {
 	firmware-name = "qcom/sm7150/courbet/ipa_fws.mbn";
 	status = "okay";
+};
+
+&mdss {
+	status = "okay";
+};
+
+&mdss_dsi0 {
+	status = "okay";
+};
+
+&mdss_dsi0_phy {
+	status = "okay";
+};
+
+&panel {
+	compatible = "mdss,k9a-36-02-0a-mp-dsc";
 };
 
 &nfc_default {
