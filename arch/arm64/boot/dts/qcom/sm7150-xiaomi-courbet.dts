@@ -91,6 +91,31 @@
 	status = "okay";
 };
 
+&i2c7 {
+	clock-frequency = <100000>;
+	status = "okay";
+
+	touchscreen: fts@49 {
+		compatible = "st,fts";
+		reg = <0x49>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&ts_int_active &ts_reset_active>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <9 0x2008>;
+		avdd-supply = <&vreg_l6c_3p0>;
+		//vdd-supply = <&touch_vddio_vreg>;
+		// touchscreen-size-x = <1080>;
+		// touchscreen-size-y = <2340>;
+
+		st,irq-gpio = <&tlmm 125 0>;
+		st,reset-gpio = <&tlmm 8 0>;
+		//st,switch_gpio = <&tlmm ? 0>;
+		st,max-coords = <1079 2339>;
+		//st,regulator_dvdd = "vdd";
+		st,regulator_avdd = "avdd";
+	};
+};
+
 &ipa {
 	firmware-name = "qcom/sm7150/courbet/ipa_fws.mbn";
 	status = "okay";
