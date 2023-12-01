@@ -748,10 +748,11 @@ static int lpass_audio_setup_runtime_pm(struct platform_device *pdev)
 
 static int lpass_audio_cc_sc7280_probe(struct platform_device *pdev)
 {
-	const struct qcom_cc_desc *desc;
-	struct regmap *regmap;
+	//const struct qcom_cc_desc *desc;
+	//struct regmap *regmap;
 	int ret;
 
+#if 0
 	ret = lpass_audio_setup_runtime_pm(pdev);
 	if (ret)
 		return ret;
@@ -777,16 +778,18 @@ static int lpass_audio_cc_sc7280_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "Failed to register LPASS AUDIO CC clocks\n");
 		goto exit;
 	}
+#endif
 
-	ret = qcom_cc_probe_by_index(pdev, 1, &lpass_audio_cc_reset_sc7280_desc);
+	//ret = qcom_cc_probe_by_index(pdev, 1, &lpass_audio_cc_reset_sc7280_desc);
+	ret = qcom_cc_probe_by_index(pdev, 0, &lpass_audio_cc_reset_sc7280_desc);
 	if (ret) {
 		dev_err(&pdev->dev, "Failed to register LPASS AUDIO CC Resets\n");
 		goto exit;
 	}
 
-	pm_runtime_mark_last_busy(&pdev->dev);
+	//pm_runtime_mark_last_busy(&pdev->dev);
 exit:
-	pm_runtime_put_autosuspend(&pdev->dev);
+	//pm_runtime_put_autosuspend(&pdev->dev);
 
 	return ret;
 }
@@ -800,7 +803,7 @@ static struct platform_driver lpass_audio_cc_sc7280_driver = {
 	.driver = {
 		.name = "lpass_audio_cc-sc7280",
 		.of_match_table = lpass_audio_cc_sc7280_match_table,
-		.pm = &lpass_audio_cc_pm_ops,
+		//.pm = &lpass_audio_cc_pm_ops,
 	},
 };
 
