@@ -680,7 +680,10 @@
 
 		vdd-l1-l12-supply = <&vreg_s1b_1p856>;
 		vdd-l2-l8-supply = <&vreg_s1b_1p856>;
-		vdd-l3-l4-l5-l7-l13-supply = <&vreg_bob>;
+		/*
+		 * Doesn't work with always-on TS regulators :/
+		 * vdd-l3-l4-l5-l7-l13-supply = <&vreg_bob>;
+		 */
 		vdd-l6-l9-l11-supply = <&vreg_bob>;
 		vdd-l10-supply = <&vreg_s7b_0p952>;
 
@@ -742,6 +745,7 @@
 			regulator-min-microvolt = <2800000>;
 			regulator-max-microvolt = <3540000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+			regulator-always-on;
 		};
 
 		vdd_px5:
@@ -782,6 +786,7 @@
 			regulator-min-microvolt = <1620000>;
 			regulator-max-microvolt = <2000000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+			regulator-always-on;
 		};
 
 		vreg_l9c_2p96: ldo9 {
