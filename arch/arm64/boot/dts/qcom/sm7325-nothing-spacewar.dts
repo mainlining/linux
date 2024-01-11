@@ -55,6 +55,8 @@
 			stride = <(1080 * 4)>;
 			format = "a8r8g8b8";
 
+			display = <&panel0>;
+
 			clocks = <&gcc GCC_DISP_HF_AXI_CLK>,
 				 <&dispcc DISP_CC_MDSS_MDP_CLK>,
 				 <&dispcc DISP_CC_MDSS_BYTE0_CLK>,
@@ -839,15 +841,43 @@
 	status = "okay";
 };
 
-/* MDSS remains disabled until the panel driver is present. */
+&mdss {
+	status = "okay";
+};
+
 &mdss_dsi {
 	vdda-supply = <&vdd_a_dsi_0_1p2>;
+	status = "okay";
 
-	/* Visionox RM692E5 panel */
+	panel0: panel@0 {
+		compatible = "mdss,rm692e5-visionox-amoled-120hz";
+		reg = <0>;
+
+		reset-gpios = <&tlmm 44 GPIO_ACTIVE_LOW>;
+
+		vdd-supply = <&vreg_l13c_3p0>;
+		vddio-supply = <&vreg_l12c_1p8>;
+
+		pinctrl-0 = <&sde_dsi_active &sde_te_active_sleep>;
+		pinctrl-1 = <&sde_dsi_sleep &sde_te_active_sleep>;
+		pinctrl-names = "default", "sleep";
+
+		port {
+			panel_in: endpoint {
+				remote-endpoint = <&mdss_dsi0_out>;
+			};
+		};
+	};
+};
+
+&mdss_dsi0_out {
+	data-lanes = <0 1 2 3>;
+	remote-endpoint = <&panel_in>;
 };
 
 &mdss_dsi_phy {
 	vdds-supply = <&vdd_a_dsi_0_0p9>;
+	status = "okay";
 };
 
 &pm7325_gpios {
@@ -1191,6 +1221,27 @@
 	nfc_int_req: nfc-int-req-state {
 		pins = "gpio41";
 		function = "gpio";
+		drive-strength = <2>;
+		bias-pull-down;
+	};
+
+	sde_dsi_active: sde-dsi-active-state {
+		pins = "gpio44";
+		function = "gpio";
+		drive-strength = <8>;
+		bias-disable;
+	};
+
+	sde_dsi_sleep: sde-dsi-sleep-state {
+		pins = "gpio44";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-pull-down;
+	};
+
+	sde_te_active_sleep: sde-te-active-state {
+		pins = "gpio80";
+		function = "mdp_vsync";
 		drive-strength = <2>;
 		bias-pull-down;
 	};
