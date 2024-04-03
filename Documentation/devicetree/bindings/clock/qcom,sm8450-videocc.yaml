@@ -16,12 +16,14 @@ description: |
 
   See also:
     include/dt-bindings/clock/qcom,sm8450-videocc.h
+    include/dt-bindings/clock/qcom,sm8475-videocc.h
     include/dt-bindings/clock/qcom,sm8650-videocc.h
 
 properties:
   compatible:
     enum:
       - qcom,sm8450-videocc
+      - qcom,sm8475-videocc
       - qcom,sm8550-videocc
       - qcom,sm8650-videocc
 
