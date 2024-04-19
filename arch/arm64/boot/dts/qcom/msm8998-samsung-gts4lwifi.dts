@@ -1,0 +1,81 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Copyright (c) 2024, David Wronek <david@mainlining.org>
+ */
+
+/dts-v1/;
+
+#include <dt-bindings/arm/qcom,ids.h>
+#include "msm8998.dtsi"
+
+/delete-node/ &pcie0;
+/delete-node/ &pcie_phy;
+/delete-node/ &remoteproc_slpi;
+/delete-node/ &adsp_mem;
+
+/ {
+	model = "Samsung Galaxy Tab S4 (Wi-Fi)";
+	compatible = "samsung,gts4lwifi", "qcom,msm8998";
+	chassis-type = "tablet";
+
+	qcom,msm-id = <QCOM_ID_MSM8998 0x20001>;
+	qcom,board-id = <8 6>;
+
+	chosen {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		bootargs = "clk_ignore_unused pd_ignore_unused";
+
+		framebuffer@9d60000 {
+			compatible = "simple-framebuffer";
+			reg = <0x0 0x9d60000 0x0 (1600 * 2560 * 4)>;
+			width = <1600>;
+			height = <2560>;
+			stride = <(1600 * 4)>;
+			format = "r8g8b8";
+		};
+
+	};
+
+	reserved-memory {
+		ramoops@84f00000 {
+			compatible = "ramoops";
+			reg = <0x00 0x84f00000 0x00 0x100000>;
+			record-size = <0x40000>;
+			console-size = <0x40000>;
+			ftrace-size = <0x40000>;
+			pmsg-size = <0x40000>;
+		};
+
+		slpi_mem: memory@94900000 {
+			reg = <0x00 0x94900000 0x00 0xc00000>;
+			no-map;
+		};
+
+		mba_mem: memory@95500000 {
+			reg = <0x00 0x95500000 0x00 0x200000>;
+			no-map;
+		};
+
+		venus_mem: memory@94400000 {
+			reg = <0x00 0x94400000 0x00 0x500000>;
+			no-map;
+		};
+
+		adsp_mem: memory@8a500000 {
+			reg = <0x00 0x8a500000 0x00 0x2700000>;
+			no-map;
+		};
+
+		const_splash_region: memory@9d60000 {
+			reg = <0x0 0x9d60000 0x0 (1600 * 2560 * 4)>;
+			no-map;
+		};
+	};
+};
+
+&tlmm {
+	gpio-reserved-ranges = <10 2>, <41 2>;
+};
