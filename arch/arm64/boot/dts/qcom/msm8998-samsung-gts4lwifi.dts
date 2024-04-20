@@ -7,11 +7,16 @@
 
 #include <dt-bindings/arm/qcom,ids.h>
 #include "msm8998.dtsi"
+#include "pm8005.dtsi"
+#include "pm8998.dtsi"
+#include "pmi8998.dtsi"
 
-/delete-node/ &pcie0;
-/delete-node/ &pcie_phy;
-/delete-node/ &remoteproc_slpi;
+/delete-node/ &hyp_mem;
 /delete-node/ &adsp_mem;
+/delete-node/ &venus_mem;
+/delete-node/ &mba_mem;
+/delete-node/ &slpi_mem;
+/delete-node/ &mpss_mem;
 
 / {
 	model = "Samsung Galaxy Tab S4 (Wi-Fi)";
@@ -22,32 +27,53 @@
 	qcom,board-id = <8 6>;
 
 	chosen {
-		#address-cells = <2>;
-		#size-cells = <2>;
-		ranges;
+                #address-cells = <2>;
+                #size-cells = <2>;
+                ranges;
 
 		bootargs = "clk_ignore_unused pd_ignore_unused";
 
-		framebuffer@9d60000 {
-			compatible = "simple-framebuffer";
-			reg = <0x0 0x9d60000 0x0 (1600 * 2560 * 4)>;
-			width = <1600>;
-			height = <2560>;
-			stride = <(1600 * 4)>;
-			format = "r8g8b8";
-		};
-
-	};
+                /* Use display framebuffer setup by the UEFI XBL bootloader for simplefb */
+                framebuffer0: framebuffer@9d400000 {
+                        compatible = "simple-framebuffer";
+                        reg = <0x0 0x9d400000 0x0 0x2400000>;
+                        width = <1600>;
+                        height = <2560>;
+                        stride = <(1600 * 4)>;
+                        format = "a8r8g8b8";
+                        /*
+                        * That's a lot of clocks, but it's necessary due
+                        * to unused clk cleanup & no panel driver yet..
+                        */
+                        clocks = <&mmcc MDSS_AHB_CLK>,
+                                 <&mmcc MDSS_AXI_CLK>,
+                                 <&mmcc MDSS_VSYNC_CLK>,
+                                 <&mmcc MDSS_MDP_CLK>,
+                                 <&mmcc MDSS_BYTE0_CLK>,
+                                 <&mmcc MDSS_BYTE0_INTF_CLK>,
+                                 <&mmcc MDSS_PCLK0_CLK>,
+                                 <&mmcc MDSS_ESC0_CLK>;
+                        power-domains = <&mmcc MDSS_GDSC>;
+                };
+        };
 
 	reserved-memory {
 		ramoops@84f00000 {
 			compatible = "ramoops";
-			reg = <0x00 0x84f00000 0x00 0x100000>;
+			reg = <0x0 0x84f00000 0x0 0x100000>;
 			record-size = <0x40000>;
 			console-size = <0x40000>;
 			ftrace-size = <0x40000>;
 			pmsg-size = <0x40000>;
 		};
+
+		hyp_mem: memory@85800000 {
+			reg = <0x0 0x85800000 0x0 0x4900000>;
+			no-map;
+
+		mpss_mem: memory@8cc00000 {
+			reg = <0x0 0x8cc00000 0x0 0x7800000>;
+			no-map;
 
 		slpi_mem: memory@94900000 {
 			reg = <0x00 0x94900000 0x00 0xc00000>;
@@ -69,8 +95,8 @@
 			no-map;
 		};
 
-		const_splash_region: memory@9d60000 {
-			reg = <0x0 0x9d60000 0x0 (1600 * 2560 * 4)>;
+		const_splash_region: memory@9d400000 {
+			reg = <0x0 0x9d400000 0x0 (1600 * 2560 * 4)>;
 			no-map;
 		};
 	};
