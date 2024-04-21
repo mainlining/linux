@@ -6,17 +6,27 @@
 /dts-v1/;
 
 #include <dt-bindings/arm/qcom,ids.h>
+#include <dt-bindings/pinctrl/qcom,pmic-gpio.h>
 #include "msm8998.dtsi"
 #include "pm8005.dtsi"
 #include "pm8998.dtsi"
-#include "pmi8998.dtsi"
 
 /delete-node/ &hyp_mem;
+/delete-node/ &xbl_mem;
+//delete-node/ &smem_mem;
+/delete-node/ &tz_mem;
+/delete-node/ &rmtfs_mem;
+/delete-node/ &spss_mem;
 /delete-node/ &adsp_mem;
+/delete-node/ &mpss_mem;
 /delete-node/ &venus_mem;
 /delete-node/ &mba_mem;
 /delete-node/ &slpi_mem;
-/delete-node/ &mpss_mem;
+/delete-node/ &ipa_fw_mem;
+/delete-node/ &ipa_gsi_mem;
+/delete-node/ &gpu_mem;
+//delete-node/ &wlan_msa_mem;
+//delete-node/ &mdata_mem;
 
 / {
 	model = "Samsung Galaxy Tab S4 (Wi-Fi)";
@@ -27,81 +37,301 @@
 	qcom,board-id = <8 6>;
 
 	chosen {
-                #address-cells = <2>;
-                #size-cells = <2>;
-                ranges;
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
 
-		bootargs = "clk_ignore_unused pd_ignore_unused";
-
-                /* Use display framebuffer setup by the UEFI XBL bootloader for simplefb */
-                framebuffer0: framebuffer@9d400000 {
-                        compatible = "simple-framebuffer";
-                        reg = <0x0 0x9d400000 0x0 0x2400000>;
-                        width = <1600>;
-                        height = <2560>;
-                        stride = <(1600 * 4)>;
-                        format = "a8r8g8b8";
-                        /*
-                        * That's a lot of clocks, but it's necessary due
-                        * to unused clk cleanup & no panel driver yet..
-                        */
-                        clocks = <&mmcc MDSS_AHB_CLK>,
-                                 <&mmcc MDSS_AXI_CLK>,
-                                 <&mmcc MDSS_VSYNC_CLK>,
-                                 <&mmcc MDSS_MDP_CLK>,
-                                 <&mmcc MDSS_BYTE0_CLK>,
-                                 <&mmcc MDSS_BYTE0_INTF_CLK>,
-                                 <&mmcc MDSS_PCLK0_CLK>,
-                                 <&mmcc MDSS_ESC0_CLK>;
-                        power-domains = <&mmcc MDSS_GDSC>;
-                };
-        };
+		framebuffer0: framebuffer@9d400000 {
+			compatible = "simple-framebuffer";
+			reg = <0x0 0x9d400000 0x0 0x2400000>;
+			width = <2560>;
+			height = <1600>;
+			stride = <(2560 * 4)>;
+			format = "a8r8g8b8";
+		};
+	};
 
 	reserved-memory {
-		ramoops@84f00000 {
-			compatible = "ramoops";
-			reg = <0x0 0x84f00000 0x0 0x100000>;
-			record-size = <0x40000>;
-			console-size = <0x40000>;
-			ftrace-size = <0x40000>;
-			pmsg-size = <0x40000>;
+		#address-cells = <0x02>;
+		#size-cells = <0x02>;
+		ranges;
+
+		adsp_region {
+			compatible = "shared-dma-pool";
+			alloc-ranges = <0x00 0x00 0x00 0xffffffff>;
+			reusable;
+			alignment = <0x00 0x400000>;
+			size = <0x00 0x800000>;
 		};
 
-		hyp_mem: memory@85800000 {
-			reg = <0x0 0x85800000 0x0 0x4900000>;
-			no-map;
+		qseecom_region {
+			reg = <0x00 0xfb200000 0x00 0x2400000>;
+			label = "qseecom_mem";
+		};
 
-		mpss_mem: memory@8cc00000 {
-			reg = <0x0 0x8cc00000 0x0 0x7800000>;
+		secure_region {
+			compatible = "shared-dma-pool";
+			alloc-ranges = <0x00 0x00 0x00 0xffffffff>;
+			reusable;
+			alignment = <0x00 0x200000>;
+			size = <0x00 0x8c00000>;
+		};
+
+		linux,cma {
+			compatible = "shared-dma-pool";
+			alloc-ranges = <0x00 0x00 0x00 0xffffffff>;
+			reusable;
+			alignment = <0x00 0x400000>;
+			size = <0x00 0x2000000>;
+			linux,cma-default;
+		};
+
+		cont_splash_mem: memory@9d400000 {
+			reg = <0x00 0x9d400000 0x00 0x2400000>;
 			no-map;
+		};
+
+		sec_debug_low_region@0 {
+			compatible = "removed-dma-pool";
+			no-map;
+			reg = <0x00 0x85000000 0x00 0x400000>;
+		};
+
+		removed_regions {
+			compatible = "removed-dma-pool";
+			no-map;
+			reg = <0x00 0x85800000 0x00 0x4900000>;
+		};
 
 		slpi_mem: memory@94900000 {
-			reg = <0x00 0x94900000 0x00 0xc00000>;
+			compatible = "removed-dma-pool";
 			no-map;
+			reg = <0x00 0x94900000 0x00 0xc00000>;
 		};
 
 		mba_mem: memory@95500000 {
-			reg = <0x00 0x95500000 0x00 0x200000>;
+			compatible = "removed-dma-pool";
 			no-map;
+			reg = <0x00 0x95500000 0x00 0x200000>;
 		};
 
-		venus_mem: memory@94400000 {
-			reg = <0x00 0x94400000 0x00 0x500000>;
+		pil_video_region {
+			compatible = "removed-dma-pool";
 			no-map;
+			reg = <0x00 0x94400000 0x00 0x500000>;
 		};
 
 		adsp_mem: memory@8a500000 {
-			reg = <0x00 0x8a500000 0x00 0x2700000>;
+			compatible = "removed-dma-pool";
 			no-map;
+			reg = <0x00 0x8a500000 0x00 0x2700000>;
 		};
 
-		const_splash_region: memory@9d400000 {
-			reg = <0x0 0x9d400000 0x0 (1600 * 2560 * 4)>;
-			no-map;
+		camera_mem_region@C0000000 {
+			reg = <0x00 0xc0000000 0x00 0x11800000>;
+			compatible = "shared-dma-pool";
+			recycleable;
 		};
+
+		mpss_mem: memory@8cc00000 {
+			compatible = "removed-dma-pool";
+			no-map;
+			reg = <0x00 0x8cc00000 0x00 0x7800000>;
+		};
+
+		secure_camera_region {
+			compatible = "shared-dma-pool";
+			no-map;
+			reg = <0x00 0xfd800000 0x00 0x2800000>;
+			label = "secure_camera_region";
+		};
+
+		secure_camera_scratch_region {
+			compatible = "shared-dma-pool";
+			no-map;
+			reg = <0x00 0xfd600000 0x00 0x200000>;
+			label = "secure_camera_scratch_region";
+		};
+	};
+};
+
+&rpm_requests {
+	regulators-0 {
+		compatible = "qcom,rpm-pm8998-regulators";
+
+		vreg_s3a_1p35: s3 {
+			regulator-min-microvolt = <1352000>;
+			regulator-max-microvolt = <1352000>;
+		};
+
+		vreg_s4a_1p8: s4 {
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+		};
+
+		vreg_s5a_2p04: s5 {
+			regulator-min-microvolt = <1904000>;
+			regulator-max-microvolt = <2040000>;
+		};
+
+		vreg_s7a_1p025: s7 {
+			regulator-min-microvolt = <900000>;
+			regulator-max-microvolt = <1028000>;
+		};
+
+		vreg_l1a_0p875: l1 {
+			regulator-min-microvolt = <880000>;
+			regulator-max-microvolt = <880000>;
+		};
+
+		vreg_l2a_1p2: l2 {
+			regulator-min-microvolt = <1200000>;
+			regulator-max-microvolt = <1200000>;
+		};
+
+		vreg_l3a_1p0: l3 {
+			regulator-min-microvolt = <1000000>;
+			regulator-max-microvolt = <1000000>;
+		};
+
+		vreg_l5a_0p8: l5 {
+			regulator-min-microvolt = <800000>;
+			regulator-max-microvolt = <800000>;
+		};
+
+		vreg_l6a_1p8: l6 {
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			regulator-boot-on;
+		};
+
+		vreg_l7a_1p8: l7 {
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+		};
+
+		vreg_l8a_1p2: l8 {
+			regulator-min-microvolt = <1200000>;
+			regulator-max-microvolt = <1200000>;
+		};
+
+		vreg_l9a_1p8: l9 {
+			regulator-min-microvolt = <1808000>;
+			regulator-max-microvolt = <2960000>;
+		};
+
+		vreg_l10a_1p8: l10 {
+			regulator-min-microvolt = <1808000>;
+			regulator-max-microvolt = <2960000>;
+		};
+
+		vreg_l11a_1p0: l11 {
+			regulator-min-microvolt = <1000000>;
+			regulator-max-microvolt = <1000000>;
+		};
+
+		vreg_l12a_1p8: l12 {
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+		};
+
+		vreg_l13a_2p95: l13 {
+			regulator-min-microvolt = <1808000>;
+			regulator-max-microvolt = <2960000>;
+		};
+
+		vreg_l14a_1p85: l14 {
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+		};
+
+		vreg_l15a_1p8: l15 {
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+		};
+
+		vreg_l16a_2p7: l16 {
+			regulator-min-microvolt = <2704000>;
+			regulator-max-microvolt = <2704000>;
+		};
+
+		vreg_l17a_1p3: l17 {
+			regulator-min-microvolt = <1304000>;
+			regulator-max-microvolt = <1304000>;
+		};
+
+		vreg_l18a_2p7: l18 {
+			regulator-min-microvolt = <2704000>;
+			regulator-max-microvolt = <2704000>;
+		};
+
+		vreg_l19a_2p7: l19 {
+			regulator-min-microvolt = <2800000>;
+			regulator-max-microvolt = <2800000>;
+		};
+
+		vreg_l20a_2p95: l20 {
+			regulator-min-microvolt = <2960000>;
+			regulator-max-microvolt = <2960000>;
+		};
+
+		vreg_l21a_2p95: l21 {
+			regulator-min-microvolt = <2960000>;
+			regulator-max-microvolt = <2960000>;
+		};
+
+		vreg_l22a_2p8: l22 {
+			regulator-min-microvolt = <2800000>;
+			regulator-max-microvolt = <2800000>;
+		};
+
+		vreg_l23a_3p3: l23 {
+			regulator-min-microvolt = <3312000>;
+			regulator-max-microvolt = <3312000>;
+		};
+
+		vreg_l24a_3p075: l24 {
+			regulator-min-microvolt = <1848000>;
+			regulator-max-microvolt = <3088000>;
+		};
+
+		vreg_l25a_3p3: l25 {
+			regulator-min-microvolt = <3104000>;
+			regulator-max-microvolt = <3312000>;
+		};
+
+		vreg_l26a_1p2: l26 {
+			regulator-min-microvolt = <1200000>;
+			regulator-max-microvolt = <1200000>;
+		};
+
+		vreg_l28_3p0: l28 {
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			regulator-boot-on;
+		};
+
+		vreg_lvs1a_1p8: lvs1 { };
+
+		vreg_lvs2a_1p8: lvs2 { };
+	};
+};
+
+&pm8005_regulators {
+	/* VDD_GFX supply */
+	pm8005_s1: s1 {
+		regulator-min-microvolt = <516000>;
+		regulator-max-microvolt = <1088000>;
+		regulator-enable-ramp-delay = <500>;
+		/* Hack until we rig up the gpu consumer */
+		regulator-always-on;
 	};
 };
 
 &tlmm {
 	gpio-reserved-ranges = <10 2>, <41 2>;
+};
+
+&mmcc {
+    status = "disabled";
 };
