@@ -11,22 +11,11 @@
 #include "pm8005.dtsi"
 #include "pm8998.dtsi"
 
-/delete-node/ &hyp_mem;
-/delete-node/ &xbl_mem;
-//delete-node/ &smem_mem;
-/delete-node/ &tz_mem;
-/delete-node/ &rmtfs_mem;
-/delete-node/ &spss_mem;
 /delete-node/ &adsp_mem;
 /delete-node/ &mpss_mem;
 /delete-node/ &venus_mem;
 /delete-node/ &mba_mem;
 /delete-node/ &slpi_mem;
-/delete-node/ &ipa_fw_mem;
-/delete-node/ &ipa_gsi_mem;
-/delete-node/ &gpu_mem;
-//delete-node/ &wlan_msa_mem;
-//delete-node/ &mdata_mem;
 
 / {
 	model = "Samsung Galaxy Tab S4 (Wi-Fi)";
@@ -64,43 +53,9 @@
 			size = <0x00 0x800000>;
 		};
 
-		qseecom_region {
-			reg = <0x00 0xfb200000 0x00 0x2400000>;
-			label = "qseecom_mem";
-		};
-
-		secure_region {
-			compatible = "shared-dma-pool";
-			alloc-ranges = <0x00 0x00 0x00 0xffffffff>;
-			reusable;
-			alignment = <0x00 0x200000>;
-			size = <0x00 0x8c00000>;
-		};
-
-		linux,cma {
-			compatible = "shared-dma-pool";
-			alloc-ranges = <0x00 0x00 0x00 0xffffffff>;
-			reusable;
-			alignment = <0x00 0x400000>;
-			size = <0x00 0x2000000>;
-			linux,cma-default;
-		};
-
 		cont_splash_mem: memory@9d400000 {
 			reg = <0x00 0x9d400000 0x00 0x2400000>;
 			no-map;
-		};
-
-		sec_debug_low_region@0 {
-			compatible = "removed-dma-pool";
-			no-map;
-			reg = <0x00 0x85000000 0x00 0x400000>;
-		};
-
-		removed_regions {
-			compatible = "removed-dma-pool";
-			no-map;
-			reg = <0x00 0x85800000 0x00 0x4900000>;
 		};
 
 		slpi_mem: memory@94900000 {
@@ -137,20 +92,6 @@
 			compatible = "removed-dma-pool";
 			no-map;
 			reg = <0x00 0x8cc00000 0x00 0x7800000>;
-		};
-
-		secure_camera_region {
-			compatible = "shared-dma-pool";
-			no-map;
-			reg = <0x00 0xfd800000 0x00 0x2800000>;
-			label = "secure_camera_region";
-		};
-
-		secure_camera_scratch_region {
-			compatible = "shared-dma-pool";
-			no-map;
-			reg = <0x00 0xfd600000 0x00 0x200000>;
-			label = "secure_camera_scratch_region";
 		};
 	};
 };
