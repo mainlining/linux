@@ -195,10 +195,10 @@
 			regulator-allow-set-load;
 		};
 
+		/* FIXME: Lower 3300000 to 3008000 to fix regulators */
 		vreg_l28_3p0: l28 {
-			regulator-min-microvolt = <3300000>;
-			regulator-max-microvolt = <3300000>;
-			regulator-boot-on;
+			regulator-min-microvolt = <3008000>;
+			regulator-max-microvolt = <3008000>;
 		};
 
 		vreg_lvs1a_1p8: lvs1 { };
@@ -207,9 +207,13 @@
 	};
 };
 
+/* Disable MMCC until we have a proper panel driver */
 &mmcc {
-    /* Disable MMCC until we have a proper panel driver */
-    status = "disabled";
+	status = "disabled";
+};
+
+&mmss_smmu {
+	status = "disabled";
 };
 
 &pm8005_regulators {
@@ -231,6 +235,7 @@
 	vcc-supply = <&vreg_l20a_2p95>;
 	vccq-supply = <&vreg_l26a_1p2>;
 	vccq2-supply = <&vreg_s4a_1p8>;
+	vdd-hba-supply = <&vreg_l26a_1p2>;
 	vcc-max-microamp = <750000>;
 	vccq-max-microamp = <560000>;
 	vccq2-max-microamp = <750000>;
@@ -241,11 +246,6 @@
 &ufsphy {
 	vdda-phy-supply = <&vreg_l1a_0p875>;
 	vdda-pll-supply = <&vreg_l2a_1p2>;
-	vddp-ref-clk-supply = <&vreg_l26a_1p2>;
-	vdda-phy-max-microamp = <51400>;
-	vdda-pll-max-microamp = <14600>;
-	vddp-ref-clk-max-microamp = <100>;
-	vddp-ref-clk-always-on;
 
 	status = "okay";
 };
