@@ -6,6 +6,7 @@
 /dts-v1/;
 
 #include <dt-bindings/arm/qcom,ids.h>
+#include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/pinctrl/qcom,pmic-gpio.h>
 #include "msm8998.dtsi"
 #include "pm8005.dtsi"
@@ -40,6 +41,40 @@
 			no-map;
 		};
 	};
+
+	i2c-muic {
+		compatible = "i2c-gpio";
+		sda-gpios = <&tlmm 119 (GPIO_ACTIVE_HIGH|GPIO_OPEN_DRAIN)>;
+		scl-gpios = <&tlmm 40 (GPIO_ACTIVE_HIGH|GPIO_OPEN_DRAIN)>;
+	};
+};
+
+/* Disable MMCC until we have a proper panel driver */
+&mmcc {
+	status = "disabled";
+};
+
+&mmss_smmu {
+	status = "disabled";
+};
+
+&pm8005_regulators {
+	/* VDD_GFX supply */
+	pm8005_s1: s1 {
+		regulator-min-microvolt = <516000>;
+		regulator-max-microvolt = <1088000>;
+		regulator-enable-ramp-delay = <500>;
+		/* Hack until we rig up the gpu consumer */
+		regulator-always-on;
+	};
+};
+
+&qusb2phy {
+	status = "okay";
+
+	vdd-supply = <&vreg_l1a_0p875>;
+	vdda-pll-supply = <&vreg_l12a_1p8>;
+	vdda-phy-dpdm-supply = <&vreg_l24a_3p075>;
 };
 
 &rpm_requests {
@@ -179,8 +214,9 @@
 			regulator-max-microvolt = <3312000>;
 		};
 
+		/* Changed from downstream */
 		vreg_l24a_3p075: l24 {
-			regulator-min-microvolt = <1848000>;
+			regulator-min-microvolt = <3088000>;
 			regulator-max-microvolt = <3088000>;
 		};
 
@@ -195,7 +231,7 @@
 			regulator-allow-set-load;
 		};
 
-		/* FIXME: Lower 3300000 to 3008000 to fix regulators */
+		/* Changed from downstream */
 		vreg_l28_3p0: l28 {
 			regulator-min-microvolt = <3008000>;
 			regulator-max-microvolt = <3008000>;
@@ -204,26 +240,6 @@
 		vreg_lvs1a_1p8: lvs1 { };
 
 		vreg_lvs2a_1p8: lvs2 { };
-	};
-};
-
-/* Disable MMCC until we have a proper panel driver */
-&mmcc {
-	status = "disabled";
-};
-
-&mmss_smmu {
-	status = "disabled";
-};
-
-&pm8005_regulators {
-	/* VDD_GFX supply */
-	pm8005_s1: s1 {
-		regulator-min-microvolt = <516000>;
-		regulator-max-microvolt = <1088000>;
-		regulator-enable-ramp-delay = <500>;
-		/* Hack until we rig up the gpu consumer */
-		regulator-always-on;
 	};
 };
 
@@ -248,4 +264,30 @@
 	vdda-pll-supply = <&vreg_l2a_1p2>;
 
 	status = "okay";
+};
+
+&usb3 {
+	status = "okay";
+
+	/* Disable USB3 clock requirement as the device only supports USB2 */
+	qcom,select-utmi-as-pipe-clk;
+};
+
+&usb3_dwc3 {
+	/* Drop the unused USB 3 PHY */
+	phys = <&qusb2phy>;
+	phy-names = "usb2-phy";
+
+	/* Fastest mode for USB 2 */
+	maximum-speed = "high-speed";
+
+	/* Force to peripheral until we can switch modes */
+	dr_mode = "peripheral";
+};
+
+&usb3phy {
+	status = "okay";
+
+	vdda-phy-supply = <&vreg_l1a_0p875>;
+	vdda-pll-supply = <&vreg_l2a_1p2>;
 };
