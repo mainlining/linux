@@ -10,7 +10,7 @@ maintainers:
   - Danila Tikhonov <danila@jiaxyga.com>
   - Jens Reidel <adrian@travitia.xyz>
 
-description: |
+description:
   The Samsung AMS639RQ08 is a 6.39 inch 1080x2340 MIPI-DSI CMD mode AMOLED panel.
 
 allOf:
@@ -30,15 +30,13 @@ properties:
     description: I/O source voltage rail
 
   vsn-supply:
-    description: Positive source voltage rail
+    description: Negative source voltage rail
 
   vsp-supply:
-    description: Negative source voltage rail
+    description: Positive source voltage rail
 
   reset-gpios: true
   port: true
-
-additionalProperties: false
 
 required:
   - compatible
@@ -49,6 +47,8 @@ required:
   - vsp-supply
   - reset-gpios
   - port
+
+additionalProperties: false
 
 examples:
   - |
