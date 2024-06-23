@@ -16,13 +16,14 @@
 #include <drm/drm_mipi_dsi.h>
 #include <drm/drm_modes.h>
 #include <drm/drm_panel.h>
+#include <drm/drm_probe_helper.h>
 
 struct rm692e5_visionox_amoled_120hz {
 	struct drm_panel panel;
 	struct mipi_dsi_device *dsi;
 	struct drm_dsc_config dsc;
 	struct gpio_desc *reset_gpio;
-	bool prepared;
+	struct regulator_bulk_data supplies[2];
 };
 
 static inline
@@ -50,8 +51,19 @@ static int rm692e5_visionox_amoled_120hz_on(struct rm692e5_visionox_amoled_120hz
 	dsi->mode_flags |= MIPI_DSI_MODE_LPM;
 
 	mipi_dsi_dcs_write_seq(dsi, 0xfe, 0x40);
-	mipi_dsi_dcs_write_seq(dsi, 0xbd, 0x00);
-	msleep(34);
+
+	/*
+	 * 60Hz
+	 * mipi_dsi_dcs_write_seq(dsi, 0xbd, 0x00);
+	 */
+
+	/*
+	 * 90Hz
+	 * mipi_dsi_dcs_write_seq(dsi, 0xbd, 0x06);
+	 */
+
+	mipi_dsi_dcs_write_seq(dsi, 0xbd, 0x07);
+	usleep_range(17000, 18000);
 	mipi_dsi_dcs_write_seq(dsi, 0xfe, 0xd2);
 	mipi_dsi_dcs_write_seq(dsi, 0x50, 0x11);
 
@@ -220,8 +232,11 @@ static int rm692e5_visionox_amoled_120hz_prepare(struct drm_panel *panel)
 	struct drm_dsc_picture_parameter_set pps;
 	int ret;
 
-	if (ctx->prepared)
-		return 0;
+	ret = regulator_bulk_enable(ARRAY_SIZE(ctx->supplies), ctx->supplies);
+	if (ret < 0) {
+		dev_err(dev, "Failed to enable regulators: %d\n", ret);
+		return ret;
+	}
 
 	rm692e5_visionox_amoled_120hz_reset(ctx);
 
@@ -229,6 +244,7 @@ static int rm692e5_visionox_amoled_120hz_prepare(struct drm_panel *panel)
 	if (ret < 0) {
 		dev_err(dev, "Failed to initialize panel: %d\n", ret);
 		gpiod_set_value_cansleep(ctx->reset_gpio, 1);
+		regulator_bulk_disable(ARRAY_SIZE(ctx->supplies), ctx->supplies);
 		return ret;
 	}
 
@@ -237,18 +253,19 @@ static int rm692e5_visionox_amoled_120hz_prepare(struct drm_panel *panel)
 	ret = mipi_dsi_picture_parameter_set(ctx->dsi, &pps);
 	if (ret < 0) {
 		dev_err(panel->dev, "failed to transmit PPS: %d\n", ret);
+		regulator_bulk_disable(ARRAY_SIZE(ctx->supplies), ctx->supplies);
 		return ret;
 	}
 
 	ret = mipi_dsi_compression_mode(ctx->dsi, true);
 	if (ret < 0) {
 		dev_err(dev, "failed to enable compression mode: %d\n", ret);
+		regulator_bulk_disable(ARRAY_SIZE(ctx->supplies), ctx->supplies);
 		return ret;
 	}
 
 	msleep(28); /* TODO: Is this panel-dependent? */
 
-	ctx->prepared = true;
 	return 0;
 }
 
@@ -258,20 +275,17 @@ static int rm692e5_visionox_amoled_120hz_unprepare(struct drm_panel *panel)
 	struct device *dev = &ctx->dsi->dev;
 	int ret;
 
-	if (!ctx->prepared)
-		return 0;
-
 	ret = rm692e5_visionox_amoled_120hz_off(ctx);
 	if (ret < 0)
 		dev_err(dev, "Failed to un-initialize panel: %d\n", ret);
 
 	gpiod_set_value_cansleep(ctx->reset_gpio, 1);
+	regulator_bulk_disable(ARRAY_SIZE(ctx->supplies), ctx->supplies);
 
-	ctx->prepared = false;
 	return 0;
 }
 
-static const struct drm_display_mode rm692e5_visionox_amoled_120hz_mode = {
+static const struct drm_display_mode rm692e5_visionox_amoled_60hz_mode = {
 	.clock = (1080 + 26 + 39 + 36) * (2400 + 16 + 21 + 16) * 60 / 1000,
 	.hdisplay = 1080,
 	.hsync_start = 1080 + 26,
@@ -283,25 +297,50 @@ static const struct drm_display_mode rm692e5_visionox_amoled_120hz_mode = {
 	.vtotal = 2400 + 16 + 21 + 16,
 	.width_mm = 68,
 	.height_mm = 152,
+	.type = DRM_MODE_TYPE_DRIVER,
+};
+
+static const struct drm_display_mode rm692e5_visionox_amoled_90hz_mode = {
+	.clock = (1080 + 26 + 39 + 36) * (2400 + 16 + 21 + 16) * 90 / 1000,
+	.hdisplay = 1080,
+	.hsync_start = 1080 + 26,
+	.hsync_end = 1080 + 26 + 39,
+	.htotal = 1080 + 26 + 39 + 36,
+	.vdisplay = 2400,
+	.vsync_start = 2400 + 16,
+	.vsync_end = 2400 + 16 + 21,
+	.vtotal = 2400 + 16 + 21 + 16,
+	.width_mm = 68,
+	.height_mm = 152,
+	.type = DRM_MODE_TYPE_DRIVER,
+};
+
+static const struct drm_display_mode rm692e5_visionox_amoled_120hz_mode = {
+	.clock = (1080 + 26 + 39 + 36) * (2400 + 16 + 21 + 16) * 120 / 1000,
+	.hdisplay = 1080,
+	.hsync_start = 1080 + 26,
+	.hsync_end = 1080 + 26 + 39,
+	.htotal = 1080 + 26 + 39 + 36,
+	.vdisplay = 2400,
+	.vsync_start = 2400 + 16,
+	.vsync_end = 2400 + 16 + 21,
+	.vtotal = 2400 + 16 + 21 + 16,
+	.width_mm = 68,
+	.height_mm = 152,
+	.type = DRM_MODE_TYPE_DRIVER,
 };
 
 static int rm692e5_visionox_amoled_120hz_get_modes(struct drm_panel *panel,
 						   struct drm_connector *connector)
 {
-	struct drm_display_mode *mode;
+	int count = 0;
 
-	mode = drm_mode_duplicate(connector->dev, &rm692e5_visionox_amoled_120hz_mode);
-	if (!mode)
-		return -ENOMEM;
+	/* Initialize 120Hz first */
+	count += drm_connector_helper_get_modes_fixed(connector, &rm692e5_visionox_amoled_120hz_mode);
+	count += drm_connector_helper_get_modes_fixed(connector, &rm692e5_visionox_amoled_90hz_mode);
+	count += drm_connector_helper_get_modes_fixed(connector, &rm692e5_visionox_amoled_60hz_mode);
 
-	drm_mode_set_name(mode);
-
-	mode->type = DRM_MODE_TYPE_DRIVER | DRM_MODE_TYPE_PREFERRED;
-	connector->display_info.width_mm = mode->width_mm;
-	connector->display_info.height_mm = mode->height_mm;
-	drm_mode_probed_add(connector, mode);
-
-	return 1;
+	return count;
 }
 
 static const struct drm_panel_funcs rm692e5_visionox_amoled_120hz_panel_funcs = {
@@ -327,8 +366,6 @@ static int rm692e5_visionox_amoled_120hz_bl_update_status(struct backlight_devic
 	return 0;
 }
 
-// TODO: Check if /sys/class/backlight/.../actual_brightness actually returns
-// correct values. If not, remove this function.
 static int rm692e5_visionox_amoled_120hz_bl_get_brightness(struct backlight_device *bl)
 {
 	struct mipi_dsi_device *dsi = bl_get_data(bl);
@@ -357,7 +394,7 @@ rm692e5_visionox_amoled_120hz_create_backlight(struct mipi_dsi_device *dsi)
 	struct device *dev = &dsi->dev;
 	const struct backlight_properties props = {
 		.type = BACKLIGHT_RAW,
-		.brightness = 4095,
+		.brightness = 2047,
 		.max_brightness = 4095,
 	};
 
@@ -375,6 +412,13 @@ static int rm692e5_visionox_amoled_120hz_probe(struct mipi_dsi_device *dsi)
 	if (!ctx)
 		return -ENOMEM;
 
+	ctx->supplies[0].supply = "vdd";
+	ctx->supplies[1].supply = "vddio";
+	ret = devm_regulator_bulk_get(dev, ARRAY_SIZE(ctx->supplies),
+								ctx->supplies);
+	if (ret < 0)
+		return dev_err_probe(dev, ret, "Failed to get regulators\n");
+
 	ctx->reset_gpio = devm_gpiod_get(dev, "reset", GPIOD_OUT_HIGH);
 	if (IS_ERR(ctx->reset_gpio))
 		return dev_err_probe(dev, PTR_ERR(ctx->reset_gpio),
@@ -391,12 +435,12 @@ static int rm692e5_visionox_amoled_120hz_probe(struct mipi_dsi_device *dsi)
 		       DRM_MODE_CONNECTOR_DSI);
 	ctx->panel.prepare_prev_first = true;
 
+	drm_panel_add(&ctx->panel);
+
 	ctx->panel.backlight = rm692e5_visionox_amoled_120hz_create_backlight(dsi);
 	if (IS_ERR(ctx->panel.backlight))
 		return dev_err_probe(dev, PTR_ERR(ctx->panel.backlight),
 				     "Failed to create backlight\n");
-
-	drm_panel_add(&ctx->panel);
 
 	/* This panel only supports DSC; unconditionally enable it */
 	dsi->dsc = &ctx->dsc;
@@ -417,11 +461,10 @@ static int rm692e5_visionox_amoled_120hz_probe(struct mipi_dsi_device *dsi)
 	ctx->dsc.bits_per_pixel = 8 << 4; /* 4 fractional bits */
 	ctx->dsc.block_pred_enable = true;
 
-	ret = mipi_dsi_attach(dsi);
+	ret = devm_mipi_dsi_attach(dev, dsi);
 	if (ret < 0) {
-		dev_err(dev, "Failed to attach to DSI host: %d\n", ret);
 		drm_panel_remove(&ctx->panel);
-		return ret;
+		return dev_err_probe(dev, ret, "Failed to attach to DSI host\n");
 	}
 
 	return 0;
@@ -430,11 +473,6 @@ static int rm692e5_visionox_amoled_120hz_probe(struct mipi_dsi_device *dsi)
 static void rm692e5_visionox_amoled_120hz_remove(struct mipi_dsi_device *dsi)
 {
 	struct rm692e5_visionox_amoled_120hz *ctx = mipi_dsi_get_drvdata(dsi);
-	int ret;
-
-	ret = mipi_dsi_detach(dsi);
-	if (ret < 0)
-		dev_err(&dsi->dev, "Failed to detach from DSI host: %d\n", ret);
 
 	drm_panel_remove(&ctx->panel);
 }
