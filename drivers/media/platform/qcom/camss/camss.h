@@ -79,11 +79,13 @@ enum camss_version {
 	CAMSS_845,
 	CAMSS_8250,
 	CAMSS_8280XP,
+	CAMSS_7280,
 };
 
 enum icc_count {
 	ICC_DEFAULT_COUNT = 0,
 	ICC_SM8250_COUNT = 4,
+	ICC_SM7280_COUNT = 4,
 };
 
 struct camss_resources {
