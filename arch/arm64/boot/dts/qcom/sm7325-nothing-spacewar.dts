@@ -1149,7 +1149,7 @@
 };
 
 &venus {
-	firmware-name = "qcom/sm7325/nothing/spacewar/vpu20_1v.mbn";
+	firmware-name = "qcom/sm7325/nothing/spacewar/venus.mbn";
 	status = "okay";
 };
 
