@@ -44,6 +44,12 @@
 			#thermal-sensor-cells = <0>;
 		};
 
+		pm8350b_vib: vibrator@f000 {
+			compatible = "qcom,pm8350b-vib", "qcom,pmi632-vib";
+			reg = <0xf000 0xf100 0xf200>;
+			status = "disabled";
+		};
+
 		pm8350b_gpios: gpio@8800 {
 			compatible = "qcom,pm8350b-gpio", "qcom,spmi-gpio";
 			reg = <0x8800>;
