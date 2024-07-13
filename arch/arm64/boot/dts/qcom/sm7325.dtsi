@@ -10,7 +10,6 @@
 /delete-node/ &cpu4_opp_2208mhz;
 /delete-node/ &cpu4_opp_2611mhz;
 /delete-node/ &cpu7_opp_2112mhz;
-/delete-node/ &cpu7_opp_2400mhz;
 /delete-node/ &cpu7_opp_2707mhz;
 /delete-node/ &cpu7_opp_3014mhz;
 
