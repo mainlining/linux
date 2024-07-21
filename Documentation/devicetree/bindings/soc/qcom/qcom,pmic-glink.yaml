@@ -26,6 +26,7 @@ properties:
               - qcom,qcm6490-pmic-glink
               - qcom,sc8180x-pmic-glink
               - qcom,sc8280xp-pmic-glink
+              - qcom,sm7325-pmic-glink
               - qcom,sm8350-pmic-glink
               - qcom,sm8450-pmic-glink
               - qcom,sm8550-pmic-glink
