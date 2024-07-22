@@ -996,8 +996,23 @@
 	clock-frequency = <100000>;
 	status = "okay";
 
-	/* nxp,tfa9873 (EAR speaker codec) @ 34 */
-	/* nxp,tfa9873 (Main speaker codec) @ 35 */
+	tfa9873_l: codec@34 { /* EAR */
+		compatible = "nxp,tfa9873",
+			     "nxp,tfa9872";
+		reg = <0x34>;
+		reset-gpio = <&tlmm 101 GPIO_ACTIVE_HIGH>;
+
+		#sound-dai-cells = <1>;
+	};
+
+	tfa9873_r: codec@35 { /* SPK */
+		compatible = "nxp,tfa9873",
+			     "nxp,tfa9872";
+		reg = <0x35>;
+		reset-gpio = <&tlmm 101 GPIO_ACTIVE_HIGH>;
+
+		#sound-dai-cells = <1>;
+	};
 };
 
 &i2c9 {
@@ -1072,6 +1087,30 @@
 &mdss_dsi_phy {
 	vdds-supply = <&vdd_a_dsi_0_0p9>;
 	status = "okay";
+};
+
+&mi2s0_mclk {
+	drive-strength = <8>;
+	bias-disable;
+	output-high;
+};
+
+&mi2s0_sclk {
+	drive-strength = <8>;
+	bias-disable;
+	output-high;
+};
+
+&mi2s0_data0 {
+	drive-strength = <8>;
+	bias-disable;
+	output-high;
+};
+
+&mi2s0_data1 {
+	drive-strength = <8>;
+	bias-disable;
+	output-high;
 };
 
 &pm7325_gpios {
@@ -1323,6 +1362,38 @@
 &remoteproc_wpss {
 	firmware-name = "qcom/sm7325/nothing/spacewar/wpss.mbn";
 	status = "okay";
+};
+
+&sound {
+	compatible = "nothing,spacewar-sndcard";
+	model = "NP1";
+
+	pinctrl-0 = <&mi2s0_mclk &mi2s0_sclk &mi2s0_data0 &mi2s0_data1>;
+	pinctrl-names = "default";
+
+	mm1-dai-link {
+		link-name = "MultiMedia1";
+
+		cpu {
+			sound-dai = <&q6asmdai MSM_FRONTEND_DAI_MULTIMEDIA1>;
+		};
+	};
+
+	i2s-dai-link {
+		link-name = "I2S Playback";
+
+		cpu {
+			sound-dai = <&q6afedai PRIMARY_MI2S_RX>;
+		};
+
+		platform {
+			sound-dai = <&q6routing>;
+		};
+
+		codec {
+			sound-dai = <&tfa9873_l 0>, <&tfa9873_r 0>;
+		};
+	};
 };
 
 &spi13 {
