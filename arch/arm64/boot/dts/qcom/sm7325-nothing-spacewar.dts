@@ -715,12 +715,131 @@
 	};
 };
 
+&camss {
+	vdda-supply = <&vdda_csi0_1p25>;
+
+	ports {
+		port@0 {
+			csiphy0_ep: endpoint  {
+				data-lanes = <0 1>;
+				remote-endpoint = <&imx471_ep>;
+			};
+		};
+
+		port@2 {
+			csiphy2_ep: endpoint {
+				data-lanes = <0 1>;
+				remote-endpoint = <&s5kjn1_ep>;
+			};
+		};
+
+		port@3 {
+			csiphy3_ep: endpoint {
+				data-lanes = <0 1>;
+				remote-endpoint = <&imx766_ep>;
+			};
+		};
+	};
+};
+
 &cci0 {
+	pinctrl-0 = <&mclk0_active>;
+	pinctrl-names = "default";
+
 	status = "okay";
 };
 
+&cci0_i2c0 {
+	/* sony,imx471 (Front) @ 34 */
+
+	camera@34 {
+		compatible = "sony,imx471"; /* FIXME */
+		reg = <0x34>; /* FIXME */
+
+		reset-gpios = <&tlmm 20 GPIO_ACTIVE_LOW>;
+		pinctrl-0 = <&cam_front_reset>,
+			    <&front_vdig_active>,
+			    <&custom2_active>;
+		pinctrl-names = "default";
+
+		clocks = <&camcc CAM_CC_MCLK0_CLK>;
+		clock-names = "cam_clk"; /* FIXME: Fix according to the driver */
+		clock-frequency  = <19200000>;
+
+		/* FIXME: Add supplies */
+
+		port {
+			imx471_ep: endpoint {
+				data-lanes = <1 2>;
+				remote-endpoint = <&csiphy0_ep>;
+			};
+		};
+	};
+};
+
 &cci1 {
+	pinctrl-0 = <&mclk2_active>,
+		    <&mclk3_active>;
+	pinctrl-names = "default";
+
 	status = "okay";
+};
+
+&cci1_i2c0 {
+	/* samsung,s5kjn1 (Rear-aux UW) @ 10 */
+
+	camera@10 {
+		compatible = "samsung,s5kjn1"; /* FIXME */
+		reg = <0x10>; /* FIXME */
+
+		reset-gpios = <&tlmm 77 GPIO_ACTIVE_LOW>;
+		pinctrl-0 = <&cam_uw_reset>,
+			    <&uw_vana_active>,
+			    <&uw_vdig_active>;
+		pinctrl-names = "default";
+
+		clocks = <&camcc CAM_CC_MCLK2_CLK>;
+		clock-names = "mclk";  /* FIXME: Fix according to the driver */
+		clock-frequency  = <19200000>;
+
+		/* FIXME: Add supplies */
+
+		port {
+			s5kjn1_ep: endpoint {
+				data-lanes = <1 2>;
+				remote-endpoint = <&csiphy2_ep>;
+			};
+		};
+	};
+};
+
+&cci1_i2c1 {
+	/* sony,imx766 (Rear wide) @ */
+
+	camera@34 {
+		compatible = "sony,imx766"; /* FIXME */
+		reg = <0x34>; /* FIXME */
+
+		reset-gpios = <&tlmm 78 GPIO_ACTIVE_LOW>;
+
+		pinctrl-0 = <&cam_rear_reset>,
+			    <&wide_vana_active>,
+			    <&custom3_active>;
+		pinctrl-names = "default";
+
+		clocks = <&camcc CAM_CC_MCLK3_CLK>;
+		clock-names = "mclk";  /* FIXME: Fix according to the driver */
+		clock-frequency  = <19200000>;
+
+		/* FIXME: Add supplies */
+
+		port {
+			imx766_ep: endpoint {
+				data-lanes = <1 2>;
+				remote-endpoint = <&csiphy3_ep>;
+			};
+		};
+	};
 };
 
 &gcc {
@@ -1154,6 +1273,13 @@
 	/* 56-59: Fingerprint reader (SPI) */
 	gpio-reserved-ranges = <56 4>;
 
+	cam_front_reset: cam-front-reset-state {
+		pins = "gpio20";
+		function = "gpio";
+		bias-disable; /* No PULL */
+		drive-strength = <2>;
+	};
+
 	qup_uart7_sleep_cts: qup-uart7-sleep-cts-state {
 		pins = "gpio28";
 		function = "gpio";
@@ -1240,6 +1366,41 @@
 		function = "gpio";
 		drive-strength = <2>;
 		bias-pull-down;
+	};
+
+	mclk0_active: mclk0-active-state {
+		pins = "gpio64";
+		function = "cam_mclk";
+		bias-disable; /* No PULL */
+		drive-strength = <2>;
+	};
+
+	mclk2_active: mclk2-active-state {
+		pins = "gpio66";
+		function = "cam_mclk";
+		bias-disable; /* No PULL */
+		drive-strength = <2>;
+	};
+
+	mclk3_active: mclk3_active-state {
+		pins = "gpio67";
+		function = "cam_mclk";
+		bias-disable; /* No PULL */
+		drive-strength = <2>;
+	};
+
+	cam_uw_reset: cam-uw-reset-state {
+		pins = "gpio77";
+		function = "gpio";
+		bias-disable; /* No PULL */
+		drive-strength = <2>;
+	};
+
+	cam_rear_reset: cam-rear-reset-state {
+		pins = "gpio78";
+		function = "gpio";
+		bias-disable; /* No PULL */
+		drive-strength = <2>;
 	};
 
 	sde_te_active_sleep: sde-te-active-state {
