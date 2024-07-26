@@ -716,7 +716,7 @@
 };
 
 &camss {
-	vdda-supply = <&vdda_csi0_1p25>;
+	vdda-supply = <&vdd_a_csi_01_1p2>;
 
 	ports {
 		port@0 {
@@ -752,14 +752,14 @@
 &cci0_i2c0 {
 	/* sony,imx471 (Front) @ 34 */
 
-	camera@34 {
+	camera@34 { /* Front */
 		compatible = "sony,imx471"; /* FIXME */
 		reg = <0x34>; /* FIXME */
 
 		reset-gpios = <&tlmm 20 GPIO_ACTIVE_LOW>;
 		pinctrl-0 = <&cam_front_reset>,
-			    <&front_vdig_active>,
-			    <&custom2_active>;
+			    <&cam_front_vdig>,
+			    <&cam_front_custom>;
 		pinctrl-names = "default";
 
 		clocks = <&camcc CAM_CC_MCLK0_CLK>;
@@ -788,14 +788,14 @@
 &cci1_i2c0 {
 	/* samsung,s5kjn1 (Rear-aux UW) @ 10 */
 
-	camera@10 {
+	camera@10 { /* Ultra Wide */
 		compatible = "samsung,s5kjn1"; /* FIXME */
 		reg = <0x10>; /* FIXME */
 
 		reset-gpios = <&tlmm 77 GPIO_ACTIVE_LOW>;
 		pinctrl-0 = <&cam_uw_reset>,
-			    <&uw_vana_active>,
-			    <&uw_vdig_active>;
+			    <&cam_uw_vana>,
+			    <&cam_uw_vdig>;
 		pinctrl-names = "default";
 
 		clocks = <&camcc CAM_CC_MCLK2_CLK>;
@@ -816,15 +816,15 @@
 &cci1_i2c1 {
 	/* sony,imx766 (Rear wide) @ */
 
-	camera@34 {
+	camera@34 { /* Rear Wide */
 		compatible = "sony,imx766"; /* FIXME */
 		reg = <0x34>; /* FIXME */
 
 		reset-gpios = <&tlmm 78 GPIO_ACTIVE_LOW>;
 
-		pinctrl-0 = <&cam_rear_reset>,
-			    <&wide_vana_active>,
-			    <&custom3_active>;
+		pinctrl-0 = <&cam_rw_reset>,
+			    <&cam_rw_vana>,
+			    <&cam_rw_custom>;
 		pinctrl-names = "default";
 
 		clocks = <&camcc CAM_CC_MCLK3_CLK>;
@@ -942,12 +942,12 @@
 };
 
 &mdss {
-	status = "okay";
+	//status = "okay";
 };
 
 &mdss_dsi {
 	vdda-supply = <&vdd_a_dsi_0_1p2>;
-	status = "okay";
+	//status = "okay";
 
 	panel0: panel@0 {
 		compatible = "mdss,rm692e5-visionox-amoled-120hz";
@@ -977,7 +977,7 @@
 
 &mdss_dsi_phy {
 	vdds-supply = <&vdd_a_dsi_0_0p9>;
-	status = "okay";
+	//status = "okay";
 };
 
 &pm7325_gpios {
@@ -1326,6 +1326,13 @@
 		bias-pull-up;
 	};
 
+	cam_front_vdig: cam-front-vdig-state {
+		pins = "gpio35";
+		function = "gpio";
+		bias-disable;
+		drive-strength = <2>;
+	};
+
 	nfc_enable_active: nfc-enable-active-state {
 		pins = "gpio38", "gpio40", "gpio39";
 		function = "gpio";
@@ -1354,6 +1361,13 @@
 		bias-pull-down;
 	};
 
+	cam_front_custom: cam-front-custom-state {
+		pins = "gpio43";
+		function = "gpio";
+		bias-disable; /* No PULL */
+		drive-strength = <2>;
+	};
+
 	sde_dsi_active: sde-dsi-active-state {
 		pins = "gpio44";
 		function = "gpio";
@@ -1366,6 +1380,13 @@
 		function = "gpio";
 		drive-strength = <2>;
 		bias-pull-down;
+	};
+
+	cam_uw_vdig: cam-uw-vdig-state {
+		pins = "gpio50";
+		function = "gpio";
+		bias-disable;
+		drive-strength = <2>;
 	};
 
 	mclk0_active: mclk0-active-state {
@@ -1389,6 +1410,20 @@
 		drive-strength = <2>;
 	};
 
+	cam_uw_vana: cam-uw-vana-state {
+		pins = "gpio68";
+		function = "gpio";
+		bias-disable;
+		drive-strength = <2>;
+	};
+
+	cam_rw_custom: cam-rw-custom-state {
+		pins = "gpio72";
+		function = "gpio";
+		bias-disable; /* No PULL */
+		drive-strength = <2>;
+	};
+
 	cam_uw_reset: cam-uw-reset-state {
 		pins = "gpio77";
 		function = "gpio";
@@ -1396,10 +1431,17 @@
 		drive-strength = <2>;
 	};
 
-	cam_rear_reset: cam-rear-reset-state {
+	cam_rw_reset: cam-rw-reset-state {
 		pins = "gpio78";
 		function = "gpio";
 		bias-disable; /* No PULL */
+		drive-strength = <2>;
+	};
+
+	cam_rw_vana: cam-wide-vana-state {
+		pins = "gpio79";
+		function = "gpio";
+		bias-disable;
 		drive-strength = <2>;
 	};
 
