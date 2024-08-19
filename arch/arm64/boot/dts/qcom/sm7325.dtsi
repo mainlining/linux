@@ -6,6 +6,8 @@
 
 #include "sc7280.dtsi"
 
+#include <dt-bindings/sound/qcom,q6dsp-lpass-ports.h>
+
 /* SM7325 uses Kryo 670 */
 &CPU0 { compatible = "qcom,kryo670"; };
 &CPU1 { compatible = "qcom,kryo670"; };
@@ -15,3 +17,100 @@
 &CPU5 { compatible = "qcom,kryo670"; };
 &CPU6 { compatible = "qcom,kryo670"; };
 &CPU7 { compatible = "qcom,kryo670"; };
+
+/delete-node/ &lpass_audiocc;
+
+&lpass_cpu {
+	status = "disabled";
+};
+
+&lpass_rx_macro {
+	clocks = <&q6afecc LPASS_CLK_ID_RX_CORE_MCLK LPASS_CLK_ATTRIBUTE_COUPLE_NO>,
+		 <&q6afecc LPASS_CLK_ID_RX_CORE_NPL_MCLK LPASS_CLK_ATTRIBUTE_COUPLE_NO>,
+		 <&q6afecc LPASS_HW_MACRO_VOTE LPASS_CLK_ATTRIBUTE_COUPLE_NO>,
+		 <&q6afecc LPASS_HW_DCODEC_VOTE LPASS_CLK_ATTRIBUTE_COUPLE_NO>,
+		 <&lpass_va_macro>;
+	clock-names = "mclk", "npl", "macro", "dcodec", "fsgen";
+
+	/*assigned-clocks = <&q6afecc LPASS_CLK_ID_RX_CORE_MCLK LPASS_CLK_ATTRIBUTE_COUPLE_NO>,
+			  <&q6afecc LPASS_CLK_ID_RX_CORE_NPL_MCLK LPASS_CLK_ATTRIBUTE_COUPLE_NO>;
+	assigned-clock-rates = <22579200>, <22579200>;*/
+
+	clock-frequency = <9600000>;
+	clock-output-names = "mclk";
+
+	/delete-property/ power-domains;
+	/delete-property/ power-domain-names;
+};
+
+&lpass_tlmm {
+	clocks = <&q6afecc LPASS_HW_MACRO_VOTE LPASS_CLK_ATTRIBUTE_COUPLE_NO>,
+		 <&q6afecc LPASS_HW_DCODEC_VOTE LPASS_CLK_ATTRIBUTE_COUPLE_NO>;
+	clock-names = "core", "audio";
+};
+
+&lpass_tx_macro {
+	compatible = "qcom,sm7325-lpass-tx-macro",
+		     "qcom,sm8250-lpass-tx-macro";
+
+	clocks = <&q6afecc LPASS_CLK_ID_TX_CORE_MCLK LPASS_CLK_ATTRIBUTE_COUPLE_NO>,
+		 <&q6afecc LPASS_CLK_ID_TX_CORE_NPL_MCLK LPASS_CLK_ATTRIBUTE_COUPLE_NO>,
+		 <&q6afecc LPASS_HW_MACRO_VOTE LPASS_CLK_ATTRIBUTE_COUPLE_NO>,
+		 <&q6afecc LPASS_HW_DCODEC_VOTE LPASS_CLK_ATTRIBUTE_COUPLE_NO>,
+		 <&lpass_va_macro>;
+	clock-names = "mclk", "npl", "macro", "dcodec", "fsgen";
+
+	/*assigned-clocks = <&q6afecc LPASS_CLK_ID_TX_CORE_MCLK LPASS_CLK_ATTRIBUTE_COUPLE_NO>,
+			  <&q6afecc LPASS_CLK_ID_TX_CORE_NPL_MCLK LPASS_CLK_ATTRIBUTE_COUPLE_NO>;
+	assigned-clock-rates = <19200000>, <19200000>;*/
+
+	clock-frequency = <9600000>;
+	clock-output-names = "mclk";
+
+	/delete-property/ power-domains;
+	/delete-property/ power-domain-names;
+};
+
+&lpass_va_macro {
+	clocks = <&q6afecc LPASS_CLK_ID_VA_CORE_MCLK LPASS_CLK_ATTRIBUTE_COUPLE_NO>,
+		 <&q6afecc LPASS_HW_MACRO_VOTE LPASS_CLK_ATTRIBUTE_COUPLE_NO>,
+		 <&q6afecc LPASS_HW_DCODEC_VOTE LPASS_CLK_ATTRIBUTE_COUPLE_NO>,
+		 <&q6afecc LPASS_CLK_ID_VA_CORE_2X_MCLK LPASS_CLK_ATTRIBUTE_COUPLE_NO>;
+	clock-names = "mclk", "macro", "dcodec", "npl";
+
+	/*assigned-clocks = <&q6afecc LPASS_CLK_ID_VA_CORE_MCLK LPASS_CLK_ATTRIBUTE_COUPLE_NO>,
+			  <&q6afecc LPASS_CLK_ID_VA_CORE_2X_MCLK LPASS_CLK_ATTRIBUTE_COUPLE_NO>;
+	assigned-clock-rates = <19200000>, <19200000>;*/
+
+	clock-frequency = <9600000>;
+	clock-output-names = "fsgen";
+
+	/delete-property/ power-domains;
+	/delete-property/ power-domain-names;
+};
+
+&soc {
+	lpass_audiocc: clock-controller@32a9000 {
+		compatible = "qcom,sc7280-lpassaudiocc";
+		reg = <0 0x032a9000 0 0x1000>;
+		clocks = <&rpmhcc RPMH_CXO_CLK>,
+			 <&q6afecc LPASS_HW_MACRO_VOTE LPASS_CLK_ATTRIBUTE_COUPLE_NO>,
+			 <&q6afecc LPASS_HW_DCODEC_VOTE LPASS_CLK_ATTRIBUTE_COUPLE_NO>,
+			 <&q6afecc LPASS_CLK_ID_TX_CORE_MCLK LPASS_CLK_ATTRIBUTE_COUPLE_NO>;
+		clock-names = "bi_tcxo", "core", "audio", "bus";
+		#clock-cells = <1>;
+		#reset-cells = <1>;
+
+		status = "disabled";
+	};
+};
+
+/*&swr0 {
+	/delete-property/ resets;
+	/delete-property/ reset-names;
+};
+
+&swr1 {
+	/delete-property/ resets;
+	/delete-property/ reset-names;
+};*/
