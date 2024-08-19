@@ -1590,6 +1590,28 @@
 	};
 };
 
+&swr0 {
+	status = "okay";
+
+	wcd_rx: codec@0,4 {
+		compatible = "sdw20217010d00";
+		reg = <0 4>;
+
+		qcom,rx-port-mapping = <1 2 3 4 5>;
+	};
+};
+
+&swr1 {
+	status = "okay";
+
+	wcd_tx: codec@0,3 {
+		compatible = "sdw20217010d00";
+		reg = <0 3>;
+
+		qcom,tx-port-mapping = <1 2 3 4>;
+	};
+};
+
 &tlmm {
 	/* 56-59: Fingerprint reader (SPI) */
 	gpio-reserved-ranges = <56 4>;
