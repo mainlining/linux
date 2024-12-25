@@ -1299,10 +1299,9 @@ static int s5kjn1_probe(struct i2c_client *client)
 	s5kjn1->sd.internal_ops = &s5kjn1_internal_ops;
 
 	ret = s5kjn1_parse_hw_config(s5kjn1);
-	if (ret) {
-		dev_err(s5kjn1->dev, "HW configuration is not supported\n");
-		return ret;
-	}
+	if (ret)
+		return dev_err_probe(s5kjn1->dev, ret,
+				     "HW configuration is not supported\n");
 
 	mutex_init(&s5kjn1->mutex);
 
