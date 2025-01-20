@@ -43,6 +43,7 @@
 
 		stdout-path = "serial0:115200n8";
 
+
 		framebuffer0: framebuffer@e1000000 {
 			compatible = "simple-framebuffer";
 			reg = <0x0 0xe1000000 0x0 (1080 * 2400 * 4)>;
@@ -651,10 +652,7 @@
 
 		vdd-l1-l12-supply = <&vreg_s1b_1p856>;
 		vdd-l2-l8-supply = <&vreg_s1b_1p856>;
-		/*
-		 * Doesn't work with always-on TS regulators :/
-		 * vdd-l3-l4-l5-l7-l13-supply = <&vreg_bob>;
-		 */
+		vdd-l3-l4-l5-l7-l13-supply = <&vreg_bob>;
 		vdd-l6-l9-l11-supply = <&vreg_bob>;
 		vdd-l10-supply = <&vreg_s7b_0p952>;
 
@@ -716,7 +714,6 @@
 			regulator-min-microvolt = <2800000>;
 			regulator-max-microvolt = <3540000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-			regulator-always-on;
 		};
 
 		vdd_px5:
@@ -757,7 +754,6 @@
 			regulator-min-microvolt = <1620000>;
 			regulator-max-microvolt = <2000000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-			regulator-always-on;
 		};
 
 		vreg_l9c_2p96: ldo9 {
@@ -1408,38 +1404,28 @@
 &spi13 {
 	status = "okay";
 
-	focaltech@0 {
-		compatible = "focaltech,fts_ts";
+	touchscreen@0 {
+		compatible = "focaltech,ft3680";
 		reg = <0x0>;
 
 		spi-max-frequency = <6000000>;
 
 		interrupt-parent = <&tlmm>;
 		interrupts = <81 0x2008>;
-		focaltech,reset-gpio = <&tlmm 105 GPIO_ACTIVE_HIGH>;
+		reset-gpios = <&tlmm 105 GPIO_ACTIVE_HIGH>;
 		focaltech,irq-gpio = <&tlmm 81 0x2008>;
 		focaltech,display-coords = <0 0 1080 2400>;
 		focaltech,max-touch-number = <10>;
-		focaltech,ic-type = <0x3658d488>;
 
 		vdd-supply = <&vdd_ts>;
 		iovdd-supply = <&vreg_l8c_1p8>;
 
-		pinctrl-0 = <&ts_active>;
-		pinctrl-1 = <&ts_release>;
-		pinctrl-2 = <&ts_suspend>;
-		pinctrl-names = "pmx_ts_active",
-				"pmx_ts_release",
-				"pmx_ts_suspend";
-		focaltech,trusted-touch-mode = "vm_mode";
-		focaltech,touch-environment = "pvm";
-		focaltech,trusted-touch-spi-irq = <601>;
-		focaltech,trusted-touch-io-bases = <0xf134000 0xf135000
-						    0xf136000 0xf137000
-						    0xf169000 0xf151000
-						    0xa94000 0x00a10000>;
-		focaltech,trusted-touch-io-sizes = <0x1000 0x1000 0x1000 0x1000
-						    0x1000 0x1000 0x1000 0x4000>;
+		firmware-name =
+			"qcom/sm7325/nothing/spacewar/focaltech_ts_novatek.bin";
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&ts_int_n>,
+			    <&ts_reset_n>;
 	};
 };
 
@@ -1580,30 +1566,18 @@
 		input-enable;
 	};
 
-	/*
-	 * Schematic names:
-	 * gpio81  - ts_int_n
-	 * gpio105 - ts_reset_n
-	 */
-	ts_active: ts-active-state {
-		pins = "gpio81", "gpio105";
+	ts_int_n: ts-int-n-state {
+		pins = "gpio81";
 		function = "gpio";
 		drive-strength = <8>;
 		bias-pull-up;
 	};
 
-	ts_release: ts_release-state {
-		pins = "gpio81", "gpio105";
+	ts_reset_n: ts-reset-n-state {
+		pins = "gpio105";
 		function = "gpio";
-		drive-strength = <2>;
-		bias-disable;
-	};
-
-	ts_suspend: ts-suspend-state {
-		pins = "gpio81", "gpio105";
-		function = "gpio";
-		drive-strength = <2>;
-		bias-pull-down;
+		drive-strength = <8>;
+		bias-pull-up;
 	};
 };
 
