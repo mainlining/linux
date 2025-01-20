@@ -940,6 +940,34 @@
 		};
 	};
 
+	camera@2d {
+		compatible = "samsung,s5kjn1";
+		reg = <0x2d>;
+
+		vddio-supply = <&vreg_cam_vio_1p8>;
+		vddd-supply = <&vreg_camu_vdig_1p1>;
+		vdda-supply = <&vreg_camu_vana_2p8>;
+
+		clocks = <&camcc CAM_CC_MCLK2_CLK>;
+		clock-frequency = <19200000>;
+
+		reset-gpios = <&tlmm 77 GPIO_ACTIVE_LOW>;
+		pinctrl-0 = <&mclk2_active>;
+		pinctrl-names = "default";
+
+		orientation = <1>; /* Rear facing */
+		rotation = <90>;
+
+		port {
+			camera_s5kjn1_ep: endpoint {
+				data-lanes = <1 2 3 4>;
+				bus-type = <MEDIA_BUS_TYPE_CSI2_DPHY>;
+				link-frequencies = /bits/ 64 <600000000>;
+				remote-endpoint = <&csiphy2_ep>;
+			};
+		};
+	};
+
 	camu_gt24p128e: eeprom@51 {
 		compatible = "giantec,gt24p128e",
 			     "atmel,24c128";
