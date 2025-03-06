@@ -911,8 +911,14 @@
 };
 
 &cci1_i2c0 {
-	/* actuator (For Ultra Wide sensor) @ 0xc */
-	/* D-PHY samsung,s5kjn1 (Ultra Wide) @ 0x2d */
+	camu_dw9800w: actuator@c {
+		compatible = "dongwoon,dw9800w",
+			     "dongwoon,dw9800";
+		reg = <0x0c>;
+
+		vin-supply = <&vreg_cam_vio_1p8>;
+		vdd-supply = <&vreg_camu_vaf_1p8>;
+	};
 
 	camera@2d {
 		compatible = "samsung,s5kjn1";
@@ -931,6 +937,8 @@
 
 		orientation = <1>; /* Rear facing */
 		rotation = <90>;
+
+		lens-focus = <&camu_dw9800w>;
 
 		port {
 			camera_s5kjn1_ep: endpoint {
