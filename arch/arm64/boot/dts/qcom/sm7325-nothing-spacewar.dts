@@ -958,6 +958,8 @@
 		orientation = <1>; /* Rear facing */
 		rotation = <90>;
 
+		lens-focus = <&camu_dw9800w>;
+
 		port {
 			camera_s5kjn1_ep: endpoint {
 				data-lanes = <1 2 3 4>;
