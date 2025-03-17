@@ -627,9 +627,8 @@ bool dpu_encoder_use_dsc_merge(struct drm_encoder *drm_enc)
 		if (dpu_enc->phys_encs[i])
 			intf_count++;
 
-	for (i = 0; i < MAX_CHANNELS_PER_ENC; i++)
-		if (dpu_enc->hw_dsc[i])
-			num_dsc++;
+	if (dpu_enc->hw_dsc[0])
+		num_dsc = 1;
 
 	return (num_dsc > 0) && (num_dsc > intf_count);
 }
@@ -668,9 +667,8 @@ void dpu_encoder_update_topology(struct drm_encoder *drm_enc,
 
 	int i;
 
-	for (i = 0; i < MAX_PHYS_ENCODERS_PER_VIRTUAL; i++)
-		if (dpu_enc->phys_encs[i])
-			topology->num_intf++;
+	if (dpu_enc->phys_encs[0])
+		topology->num_intf = 1;
 
 	dsc = dpu_encoder_get_dsc_config(drm_enc);
 
@@ -686,7 +684,7 @@ void dpu_encoder_update_topology(struct drm_encoder *drm_enc,
 		WARN(topology->num_intf > 2,
 		     "DSC topology cannot support more than 2 interfaces\n");
 		if (topology->num_intf >= 2 || dpu_kms->catalog->dsc_count >= 2)
-			topology->num_dsc = 2;
+			topology->num_dsc = 1;
 		else
 			topology->num_dsc = 1;
 	}
@@ -2212,7 +2210,6 @@ static void dpu_encoder_dsc_pipe_clr(struct dpu_hw_ctl *ctl,
 
 static void dpu_encoder_unprep_dsc(struct dpu_encoder_virt *dpu_enc)
 {
-	/* coding only for 2LM, 2enc, 1 dsc config */
 	struct dpu_encoder_phys *enc_master = dpu_enc->cur_master;
 	struct dpu_hw_ctl *ctl = enc_master->hw_ctl;
 	struct dpu_hw_dsc *hw_dsc[MAX_CHANNELS_PER_ENC];
