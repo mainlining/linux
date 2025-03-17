@@ -469,6 +469,15 @@
 			};
 		};
 
+		port@1 {
+			csiphy1_ep: endpoint {
+				clock-lanes = <7>;
+				data-lanes = <0 1 2 3>;
+				bus-type = <MEDIA_BUS_TYPE_CSI2_DPHY>;
+				remote-endpoint = <&cam_imx582_ep>;
+			};
+		};
+
 		port@2 {
 			csiphy2_ep: endpoint {
 				clock-lanes = <7>;
@@ -485,15 +494,54 @@
 };
 
 &cci0_i2c0 {
-	/* CPHY IMX582 @ 0x10 */
-	/* IMX582 VCM DW9800 @ 0xC */
-
 	imx582_gt24p128e: eeprom@51 {
 		compatible = "giantec,gt24p128e",
 			     "atmel,24c128";
 		reg = <0x51>;
 		vcc-supply = <&vreg_l5c_1p8>;
 		read-only;
+	};
+
+	imx582_vcm: dw9800@c {
+		compatible = "dongwoon,dw9800";
+		reg = <0x0c>;
+
+		vin-supply = <&vreg_l5c_1p8>;
+		vdd-supply = <&vreg_l7c_2p85>;
+	};
+
+	imx582@10 {
+		compatible = "sony,imx582";
+		reg = <0x10>;
+
+		clocks = <&camcc CAM_CC_MCLK0_CLK>;
+		clock-names = "mclk";
+		clock-frequency = <19200000>;
+		assigned-clocks = <&camcc CAM_CC_MCLK0_CLK>;
+		assigned-clock-rates = <19200000>;
+
+		reset-gpios = <&tlmm 93 GPIO_ACTIVE_HIGH>;
+
+		vio-supply = <&vreg_l5c_1p8>;
+		vana-supply = <&vreg_l7p>;
+		vdig-supply = <&vreg_l2p>;
+		custom-supply = <&vreg_l6p>;
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&cam_imx582_default>;
+
+		orientation = <1>;
+		rotation = <270>;
+
+		lens-focus = <&imx582_vcm>;
+
+		port {
+			cam_imx582_ep: endpoint {
+				data-lanes = <1 2 3 4>;
+				link-frequencies = /bits/ 64 <720000000>;
+				remote-endpoint = <&csiphy1_ep>;
+			};
+		};
 	};
 };
 
@@ -1144,6 +1192,22 @@
 
 		mclk2-pins {
 			pins = "gpio96";
+			function = "cam_mclk";
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
+
+	cam_imx582_default: cam-imx582-default-state {
+		rst-pins {
+			pins = "gpio93";
+			function = "gpio";
+			drive-strength = <2>;
+			bias-disable;
+		};
+
+		mclk0-pins {
+			pins = "gpio94";
 			function = "cam_mclk";
 			drive-strength = <2>;
 			bias-disable;
