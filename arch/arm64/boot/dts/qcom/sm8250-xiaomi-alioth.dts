@@ -715,6 +715,23 @@
 	status = "okay";
 };
 
+&i2c1 {
+	status = "okay";
+	clock-frequency = <400000>;
+
+	nfc@28 {
+		compatible = "nxp,pn553",
+			     "nxp,nxp-nci-i2c";
+		reg = <0x28>;
+
+		interrupt-parent = <&tlmm>;
+		interrupts = <111 IRQ_TYPE_EDGE_RISING>;
+
+		enable-gpios = <&tlmm 83 GPIO_ACTIVE_HIGH>;
+		firmware-gpios = <&tlmm 110 GPIO_ACTIVE_HIGH>;
+	};
+};
+
 &i2c3 {
 	clock-frequency = <1000000>;
 	status = "okay";
