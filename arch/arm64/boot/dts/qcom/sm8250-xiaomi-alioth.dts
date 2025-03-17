@@ -6,6 +6,7 @@
 /dts-v1/;
 
 #include <dt-bindings/arm/qcom,ids.h>
+#include <dt-bindings/media/video-interfaces.h>
 #include <dt-bindings/phy/phy.h>
 #include <dt-bindings/regulator/qcom,rpmh-regulator.h>
 #include <dt-bindings/sound/qcom,q6afe.h>
@@ -367,6 +368,20 @@
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 		};
 
+		vreg_l2c_1p3: ldo2 {
+			regulator-name = "vreg_l2c_1p8";
+			regulator-min-microvolt = <1200000>;
+			regulator-max-microvolt = <1304000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
+		vreg_l3c_1p2: ldo3 {
+			regulator-name = "vreg_l3c_1p2";
+			regulator-min-microvolt = <800000>;
+			regulator-max-microvolt = <1200000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
 		vreg_l5c_1p8: ldo5 {
 			regulator-name = "vreg_l5c_1p8";
 			regulator-min-microvolt = <1800000>;
@@ -430,6 +445,161 @@
 	cpu7_opp21: opp-3187200000 {
 		opp-hz = /bits/ 64 <3187200000>;
 		opp-peak-kBps = <8368000 51609600>;
+	};
+};
+
+&camcc {
+	status = "okay";
+};
+
+&camss {
+	vdda-phy-supply = <&vreg_l5a_0p88>;
+	vdda-pll-supply = <&vreg_l9a_1p2>;
+
+	status = "okay";
+
+	ports {
+		port@0 {
+			csiphy0_ep: endpoint {
+				clock-lanes = <7>;
+				data-lanes = <0 1>;
+				bus-type = <MEDIA_BUS_TYPE_CSI2_DPHY>;
+				remote-endpoint = <&cam_s5k5e9_ep>;
+			};
+		};
+
+		port@2 {
+			csiphy2_ep: endpoint {
+				clock-lanes = <7>;
+				data-lanes = <0 1 2 3>;
+				bus-type = <MEDIA_BUS_TYPE_CSI2_DPHY>;
+				remote-endpoint = <&cam_imx355_ep>;
+			};
+		};
+	};
+};
+
+&cci0 {
+	status = "okay";
+};
+
+&cci0_i2c0 {
+	/* CPHY IMX582 @ 0x10 */
+	/* IMX582 VCM DW9800 @ 0xC */
+
+	imx582_gt24p128e: eeprom@51 {
+		compatible = "giantec,gt24p128e",
+			     "atmel,24c128";
+		reg = <0x51>;
+		vcc-supply = <&vreg_l5c_1p8>;
+		read-only;
+	};
+};
+
+&cci0_i2c1 {
+	s5k5e9_eeprom: eeprom@52 {
+		compatible = "puya,p24c64f",
+			     "atmel,24c64";
+		reg = <0x52>;
+		vcc-supply = <&vreg_l5c_1p8>;
+		read-only;
+	};
+
+	s5k5e9_vcm: dw9800@c {
+		compatible = "dongwoon,dw9800";
+		reg = <0x0c>;
+
+		vin-supply = <&vreg_l5c_1p8>;
+		vdd-supply = <&vreg_l7c_2p85>;
+	};
+
+	s5k5e9@2d {
+		compatible = "samsung,s5k5e9";
+		reg = <0x2d>;
+
+		vio-supply = <&vreg_l5c_1p8>;
+		vana-supply = <&vreg_l4p>;
+		vdig-supply = <&vreg_l2c_1p3>;
+
+		clocks = <&camcc CAM_CC_MCLK1_CLK>;
+		clock-names = "xvclk";
+		clock-frequency = <19200000>;
+		assigned-clocks = <&camcc CAM_CC_MCLK1_CLK>;
+		assigned-clock-rates = <19200000>;
+
+		reset-gpios = <&tlmm 92 GPIO_ACTIVE_HIGH>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&cam_s5k5e9_default>;
+
+		orientation = <1>;
+		rotation = <270>;
+
+		lens-focus = <&s5k5e9_vcm>;
+
+		port {
+			cam_s5k5e9_ep: endpoint {
+				data-lanes = <1 2>;
+				link-frequencies = /bits/ 64 <480000000>;
+				remote-endpoint = <&csiphy0_ep>;
+			};
+		};
+	};
+};
+
+&cci1 {
+	status = "okay";
+};
+
+&cci1_i2c0 {
+	imx355_eeprom: eeprom@50 {
+		compatible = "giantec,gt24p64e",
+			     "atmel,24c64";
+		reg = <0x50>;
+		vcc-supply = <&vreg_l5c_1p8>;
+		read-only;
+	};
+
+	imx355@1a {
+		compatible = "sony,imx355";
+		reg = <0x1a>;
+
+		clocks = <&camcc CAM_CC_MCLK2_CLK>;
+		clock-names = "mclk";
+		clock-frequency = <19200000>;
+		assigned-clocks = <&camcc CAM_CC_MCLK2_CLK>;
+		assigned-clock-rates = <19200000>;
+
+		reset-gpios = <&tlmm 78 GPIO_ACTIVE_HIGH>;
+
+		vio-supply = <&vreg_l5c_1p8>;
+		vana-supply = <&vreg_l3p>;
+		vdig-supply = <&vreg_l3c_1p2>;
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&cam_imx355_default>;
+
+		orientation = <1>;
+		rotation = <270>;
+
+		port {
+			cam_imx355_ep: endpoint {
+				data-lanes = <1 2 3 4>;
+				link-frequencies = /bits/ 64 <360000000>;
+				remote-endpoint = <&csiphy2_ep>;
+			};
+		};
+	};
+};
+
+&cci1_i2c1 {
+	/* DPHY S5K3T2 @ 0x10 */
+
+	s5k3t2_eeprom: eeprom@51 {
+		compatible = "puya,p24c64f",
+			     "atmel,24c64";
+		reg = <0x51>;
+		vcc-supply = <&vreg_l5c_1p8>;
+		read-only;
 	};
 };
 
@@ -932,6 +1102,38 @@
 		function = "gpio";
 		drive-strength = <2>;
 		bias-disable;
+	};
+
+	cam_s5k5e9_default: cam-s5k5e9-default-state {
+		rst-pins {
+			pins = "gpio92";
+			function = "gpio";
+			drive-strength = <2>;
+			bias-disable;
+		};
+
+		mclk1-pins {
+			pins = "gpio95";
+			function = "cam_mclk";
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
+
+	cam_imx355_default: cam-imx355-default-state {
+		rst-pins {
+			pins = "gpio78";
+			function = "gpio";
+			drive-strength = <2>;
+			bias-disable;
+		};
+
+		mclk2-pins {
+			pins = "gpio96";
+			function = "cam_mclk";
+			drive-strength = <2>;
+			bias-disable;
+		};
 	};
 };
 
