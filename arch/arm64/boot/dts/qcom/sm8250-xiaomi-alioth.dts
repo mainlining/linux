@@ -870,6 +870,23 @@
 	};
 };
 
+&spi2 {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&qup_spi2_data_clk>;
+	clock-frequency = <50000000>;
+
+	irled@0 {
+		compatible = "ir-spi-led";
+		reg = <0x0>;
+
+		spi-max-frequency = <19200000>;
+		power-supply = <&vph_pwr>;
+		duty-cycle = /bits/ 8 <60>;
+		led-active-low;
+	};
+};
+
 &qup_spi4_cs_gpio {
 	drive-strength = <6>;
 	bias-disable;
