@@ -84,20 +84,10 @@ struct ft8756_ts {
 	int irq;
 	struct device *dev;
 
-#define FT8756_STATUS_SUSPEND			BIT(0)
-#define FT8756_STATUS_DOWNLOAD_COMPLETE	BIT(1)
-#define FT8756_STATUS_DOWNLOAD_RECOVER	BIT(2)
-	unsigned int status;
-
 	struct touchscreen_properties prop;
 	struct ft8756_abs_object abs_obj;
 
 	struct drm_panel_follower panel_follower;
-
-	struct delayed_work work;
-
-	struct firmware fw_entry; /* containing request fw data */
-	const char *firmware_path;
 };
 
 /*
@@ -246,19 +236,31 @@ static void ft8756_disable_regulators(void *data)
 
 static void ft8756_reset(struct ft8756_ts *ts)
 {
-	gpiod_set_value_cansleep(ts->reset_gpio, 1);
-	msleep(1);
 	gpiod_set_value_cansleep(ts->reset_gpio, 0);
+	msleep(1);
+	gpiod_set_value_cansleep(ts->reset_gpio, 1);
 	msleep(200);
 }
 
 static int ft8756_check_chip_id(struct ft8756_ts *ts)
 {
 	u16 chip_id = 0;
+	u8 buf[2];
 	int ret;
 
 	ft8756_reset(ts);
 
+	ret = regmap_raw_read(ts->regmap, 0xA3, &buf[0], 1);
+	ret = regmap_raw_read(ts->regmap, 0x9F, &buf[1], 1);
+	chip_id = (buf[0] << 8) | buf[1];
+	if (chip_id != 0x5652 || ret) {
+		dev_err(ts->dev, "Chip ID mismatch: expected 0x%x, got 0x%x", 0x5652, chip_id);
+		goto fallback;
+	}
+
+	return 0;
+
+fallback:
 	ret = regmap_write(ts->regmap, FT8756_CMD_START1, FT8756_CMD_START2);
 	if (ret)
 		goto exit;
@@ -354,8 +356,6 @@ static void ft8756_report(struct ft8756_ts *ts)
 	for(i = 0; i < 6; i++) {
 		if((point[i] != 0xEF && point[i] != 0xFF))
 			break;
-
-		ts->status |= FT8756_STATUS_DOWNLOAD_RECOVER;
 		goto exit;
 	}
 
@@ -415,261 +415,7 @@ static irqreturn_t ft8756_irq_handler(int irq, void *dev_id)
 
 	enable_irq(ts->irq);
 
-	if (ts->status & FT8756_STATUS_DOWNLOAD_RECOVER) {
-		ts->status &= ~FT8756_STATUS_DOWNLOAD_RECOVER;
-		schedule_delayed_work(&ts->work, 40000);
-	}
-
 	return IRQ_HANDLED;
-}
-
-static int ft8756_enter_boot(struct ft8756_ts *ts) {
-	u16 chip_id = 0;
-	int ret;
-
-	ft8756_reset(ts);
-	mdelay(8);
-
-	ret = regmap_write(ts->regmap, FT8756_CMD_START1, 0x0);
-	if (ret)
-		goto exit;
-
-	msleep(15);
-
-	ret = regmap_raw_read(ts->regmap, FT8756_CMD_READ_ID, &chip_id, 2);
-	chip_id = cpu_to_be16(chip_id);
-	if (chip_id != 0x8756 || ret) {
-		dev_err(ts->dev, "Chip ID mismatch: expected 0x%x, got 0x%x", 0x8756, chip_id);
-		ret = -ENODEV;
-		goto exit;
-	}
-
-exit:
-	return ret;
-}
-
-static int ft8756_calc_ecc(struct ft8756_ts *ts, const u32 addr, u32 size, u16* ecc_value) {
-	int ret, i;
-	u8 cmd[FT8756_ROMBOOT_CMD_ECC_LEN] = { 0 };
-	u8 value[2] = { 0 };
-
-	cmd[0] = (u8)(((addr) >> 16) & 0xFF);
-	cmd[1] = (u8)(((addr) >> 8) & 0xFF);
-	cmd[2] = (u8)((addr) & 0xFF);
-	cmd[3] = (u8)(((size) >> 16) & 0xFF);
-	cmd[4] = (u8)(((size) >> 8) & 0xFF);
-	cmd[5] = (u8)((size) & 0xFF);
-
-	ret = regmap_raw_write(ts->regmap, FT8756_ROMBOOT_CMD_ECC, &cmd, FT8756_ROMBOOT_CMD_ECC_LEN);
-	if (ret) {
-		dev_err(ts->dev, "Failed to calc ecc: %d", ret);
-		goto exit;
-	}
-	msleep(2);
-
-	for(i = 0; i < FT8756_ECC_FINISH_TIMEOUT; i++) {
-		ret = regmap_raw_read(ts->regmap, FT8756_ROMBOOT_CMD_ECC_FINISH, value, 1);
-		if (ret) {
-			dev_err(ts->dev, "ECC Finish command failed: %d", ret);
-			goto exit;
-		}
-		if (value[0] == 0xA5)
-			break;
-		msleep(1);
-	}
-	if (i >= FT8756_ECC_FINISH_TIMEOUT) {
-		dev_err(ts->dev, "Timeout while waiting for ECC calculation to complete");
-		ret = -EIO;
-		goto exit;
-	}
-
-	ret = regmap_raw_read(ts->regmap, FT8756_ROMBOOT_CMD_ECC_READ, value, 2);
-	if (ret) {
-		dev_err(ts->dev, "Failed to read ECC: %d", ret);
-		goto exit;
-	}
-	*ecc_value = ((u16)(value[0] << 8) + value[1]) & 0x0000FFFF;
-
-exit:
-	return ret;
-}
-
-static int ft8756_dpram_write(struct ft8756_ts *ts, const u8* fwdata, u32 fwsize, bool wpram) {
-	int offset, packet_number, packet_remainder, packet_length, addr, ret, i, j, k;
-	u32 packet_size = (32 * 1024 - 16);
-	u32 base_addr = wpram ? FT8756_PRAM_SADDR : FT8756_DRAM_SADDR;
-	u16 eccTP, ecc;
-	u8 *cmd;
-
-	cmd = devm_kzalloc(ts->dev, packet_size + 7, GFP_KERNEL);
-	if (cmd == NULL) {
-		dev_err(ts->dev, "%s: kzalloc for cmd failed!\n", __func__);
-		return -ENOMEM;
-	}
-
-	packet_number = fwsize / packet_size;
-	packet_remainder = fwsize % packet_size;
-	if (packet_remainder > 0)
-		packet_number++;
-
-	packet_length = packet_size;
-	for(i = 0; i < packet_number; i++) {
-		offset = i * packet_size;
-		addr = offset + base_addr;
-		if ((i == (packet_number - 1)) && packet_remainder)
-			packet_length = packet_remainder;
-
-		cmd[0] = (u8)(((addr) >> 16) & 0xFF);
-		cmd[1] = (u8)(((addr) >> 8) & 0xFF);
-		cmd[2] = (u8)((addr) & 0xFF);
-		ret = regmap_raw_write(ts->regmap, FT8756_ROMBOOT_CMD_SET_PRAM_ADDR, cmd, FT8756_ROMBOOT_CMD_SET_PRAM_ADDR_LEN);
-		if (ret) {
-			dev_err(ts->dev, "Failed to set pram address: %d", ret);
-			goto exit;
-		}
-
-		memcpy(cmd, fwdata + offset, packet_length);
-
-		ret = regmap_bulk_write(ts->regmap, FT8756_ROMBOOT_CMD_WRITE, cmd, packet_length);
-		if (ret) {
-			dev_err(ts->dev, "%s: failed write to pram\n", __func__);
-			goto exit;
-		}
-
-		ecc = 0;
-
-		for(j = 0; j < packet_length; j += 2) {
-			ecc ^= (fwdata[j + offset] << 8) | (fwdata[j + offset + 1]);
-			for(k = 0; k < 16; k++)
-				ecc = ecc & 1 ? (u16) ((ecc >> 1) ^ ((1 << 15) + (1 << 10) + (1 << 3))) : ecc >> 1;
-		}
-
-		ret = ft8756_calc_ecc(ts, offset, packet_length, &eccTP);
-		if (ret)
-			goto exit;
-
-		if(ecc != eccTP) {
-			dev_err(ts->dev, "ECC error: 0x%02x expected, got 0x%02x", ecc, eccTP);
-			ret = -EIO;
-			goto exit;
-		}
-	}
-
-exit:
-	return ret;
-}
-
-static void _ft8756_download_firmware(struct ft8756_ts *ts) {
-	const struct firmware *fw_entry;
-	int ret;
-
-	if (ts->fw_entry.data)
-		goto upload;
-
-	ret = request_firmware(&fw_entry, ts->firmware_path, ts->dev);
-	if (ret) {
-		dev_err(ts->dev, "failed to request fw: %s\n", ts->firmware_path);
-		goto exit;
-	}
-
-	/*
-	 * must allocate in DMA buffer otherwise fail spi tx DMA
-	 * so we need to manage our own fw struct
-	 * pm_resume need to re-upload fw for FT8756 IC
-	 */
-	ts->fw_entry.data = devm_kmemdup(ts->dev, fw_entry->data, fw_entry->size, GFP_KERNEL | GFP_DMA);
-
-	if (!ts->fw_entry.data) {
-		dev_err(ts->dev, "Failed to allocate fw data\n");
-		goto exit;
-	}
-
-	ts->fw_entry.size = fw_entry->size;
-
-	WARN_ON(ts->fw_entry.data[0] != fw_entry->data[0]);
-
-	release_firmware(fw_entry);
-
-upload:
-	ret = ft8756_enter_boot(ts);
-	if (ret) {
-		dev_err(ts->dev, "Failed to enter boot mode\n");
-		goto release_fw;
-	}
-
-	{
-		u16 code_len = ((u16)ts->fw_entry.data[FT8756_APP_INFO_OFFSET + 0] << 8) + ts->fw_entry.data[FT8756_APP_INFO_OFFSET + 1];
-		u16 code_len_n = ((u16)ts->fw_entry.data[FT8756_APP_INFO_OFFSET + 2] << 8) + ts->fw_entry.data[FT8756_APP_INFO_OFFSET + 3];
-		if ((code_len + code_len_n) != 0xFFFF) {
-			dev_err(ts->dev, "PRAM code length is invalid");
-			goto release_fw;
-		}
-
-		ret = ft8756_dpram_write(ts, ts->fw_entry.data, code_len * 2, true);
-		if (ret) {
-			dev_err(ts->dev, "Failed to write to PRAM: %d", ret);
-			goto release_fw;
-		}
-	}
-
-	{
-		u16 code_len = ((u16)ts->fw_entry.data[FT8756_APP_INFO_OFFSET + 0x8] << 8) + ts->fw_entry.data[FT8756_APP_INFO_OFFSET + 0x9];
-		u16 code_len_n = ((u16)ts->fw_entry.data[FT8756_APP_INFO_OFFSET + 0xA] << 8) + ts->fw_entry.data[FT8756_APP_INFO_OFFSET + 0xB];
-		if ((code_len + code_len_n) != 0xFFFF) {
-			dev_err(ts->dev, "DRAM code length is invalid");
-			goto release_fw;
-		}
-
-		u32 PramAppSize = ((u32)(((u16)ts->fw_entry.data[FT8756_APP_INFO_OFFSET + 0] << 8) + ts->fw_entry.data[FT8756_APP_INFO_OFFSET + 1])) * 2;
-
-		ret = ft8756_dpram_write(ts, ts->fw_entry.data + PramAppSize, code_len * 2, false);
-		if (ret) {
-			dev_err(ts->dev, "Failed to write to DRAM: %d", ret);
-			goto release_fw;
-		}
-	}
-
-	ret = regmap_write(ts->regmap, FT8756_ROMBOOT_CMD_START_APP, 0x0);
-	if (ret) {
-		dev_err(ts->dev, "Failed to start FW: %d", ret);
-		goto exit;
-	}
-
-	ts->status |= FT8756_STATUS_DOWNLOAD_COMPLETE;
-	dev_info(ts->dev, "Touch IC FW loaded successfully");
-	goto exit;
-
-release_fw:
-	kfree(ts->fw_entry.data);
-	ts->fw_entry.data = NULL;
-	ts->fw_entry.size = 0;
-exit:
-	return;
-}
-
-static void ft8756_download_firmware(struct work_struct *work) {
-	struct ft8756_ts *ts = container_of(work, struct ft8756_ts, work.work);
-
-	/* Disable power management runtime for the device */
-	pm_runtime_disable(ts->dev);
-
-	/* Disable the touch screen IRQ to prevent further interrupts */
-	disable_irq_nosync(ts->irq);
-
-	/* Cancel any pending delayed work */
-	cancel_delayed_work(&ts->work);
-
-	_ft8756_download_firmware(ts);
-
-	/* Enable touch screen IRQ and power management runtime */
-	enable_irq(ts->irq);
-	pm_runtime_enable(ts->dev);
-
-	/* If the download is not complete, reschedule the delayed work after 4000ms */
-	if (!(ts->status & FT8756_STATUS_DOWNLOAD_COMPLETE)) {
-		cancel_delayed_work(&ts->work);
-		schedule_delayed_work(&ts->work, 4000);
-	}
 }
 
 static int ft8756_spi_probe(struct spi_device *spi)
@@ -779,13 +525,6 @@ skip_regulators:
 	if (ret)
 		return ret;
 
-	/* Parse the firmware path from the device tree */
-	ret = of_property_read_string(dev->of_node, "firmware-name", &ts->firmware_path);
-	if (ret) {
-		dev_err(dev, "Failed to read firmware-name property\n");
-		return ret;
-	}
-
 	ret = ft8756_input_dev_config(ts);
 	if (ret) {
 		dev_err(dev, "failed set input device: %d\n", ret);
@@ -799,12 +538,6 @@ skip_regulators:
 		dev_err(dev, "request irq failed: %d\n", ret);
 		return ret;
 	}
-
-	/* Set up delayed work for firmware download */
-	devm_delayed_work_autocancel(dev, &ts->work, ft8756_download_firmware);
-
-	/* Schedule the delayed work */
-	schedule_delayed_work(&ts->work, 0);
 
 	/* If the device follows a DRM panel, configure panel follower */
 	if (drm_is_panel_follower(dev)) {
@@ -820,10 +553,6 @@ static int __maybe_unused ft8756_internal_pm_suspend(struct device *dev)
 {
 	struct ft8756_ts *ts = dev_get_drvdata(dev);
 	int ret = 0;
-
-	ts->status |= FT8756_STATUS_SUSPEND;
-
-	cancel_delayed_work_sync(&ts->work);
 
 	regmap_write(ts->regmap, FT8756_REG_POWER_MODE_SLEEP, FT8756_REG_POWER_MODE_SLEEP);
 	if (ret)
@@ -845,19 +574,6 @@ static int __maybe_unused ft8756_pm_suspend(struct device *dev)
 	return ret;
 }
 
-static int __maybe_unused ft8756_internal_pm_resume(struct device *dev)
-{
-	struct ft8756_ts *ts = dev_get_drvdata(dev);
-
-	/* some how reduced some kind of cpu, but remove checking should no harm */
-	if (ts->status & FT8756_STATUS_SUSPEND)
-		schedule_delayed_work(&ts->work, 0);
-
-	ts->status &= ~FT8756_STATUS_SUSPEND;
-
-	return 0;
-}
-
 static int __maybe_unused ft8756_pm_resume(struct device *dev)
 {
 	struct ft8756_ts *ts = dev_get_drvdata(dev);
@@ -868,7 +584,6 @@ static int __maybe_unused ft8756_pm_resume(struct device *dev)
 
 	enable_irq(ts->irq);
 
-	ret = ft8756_internal_pm_resume(dev);
 	return ret;
 }
 
@@ -880,17 +595,14 @@ static int panel_prepared(struct drm_panel_follower *follower)
 {
 	struct ft8756_ts *ts = container_of(follower, struct ft8756_ts, panel_follower);
 
-	if (ts->status & FT8756_STATUS_SUSPEND)
-		enable_irq(ts->irq);
+	enable_irq(ts->irq);
 
-	return ft8756_internal_pm_resume(ts->dev);
+	return 0;
 }
 
 static int panel_unpreparing(struct drm_panel_follower *follower)
 {
 	struct ft8756_ts *ts = container_of(follower, struct ft8756_ts, panel_follower);
-
-	ts->status |= FT8756_STATUS_SUSPEND;
 
 	disable_irq(ts->irq);
 
