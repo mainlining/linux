@@ -103,6 +103,13 @@ static int sm8250_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 	return 0;
 }
 
+static const struct {
+	unsigned int rx[1];
+} cs35l41_tdm_channel_map[] = {
+	{.rx = {0}},
+	{.rx = {2}},
+};
+
 static int sm8250_snd_startup(struct snd_pcm_substream *substream)
 {
 	unsigned int fmt = SND_SOC_DAIFMT_BP_FP;
@@ -148,6 +155,14 @@ static int sm8250_snd_startup(struct snd_pcm_substream *substream)
 			snd_soc_dai_set_sysclk(codec_dai, 0, TDM_BCLK_RATE, SNDRV_PCM_STREAM_PLAYBACK);
 			if (ret < 0) {
 				dev_err(rtd->dev, "TDM fmt err:%d\n", ret);
+				return ret;
+			}
+
+			ret = snd_soc_dai_set_channel_map(codec_dai, 0, NULL,
+						  ARRAY_SIZE(cs35l41_tdm_channel_map[j].rx),
+						  (unsigned int *)cs35l41_tdm_channel_map[j].rx);
+			if (ret < 0) {
+				dev_err(rtd->dev, "Fail to set channel map, err:%d\n", ret);
 				return ret;
 			}
 		}
