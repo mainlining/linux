@@ -1,0 +1,376 @@
+// SPDX-License-Identifier: BSD-3-Clause
+/*
+ * Copyright (c) 2025, Danila Tikhonov <danila@jiaxyga.com>
+ */
+
+/dts-v1/;
+
+#define PMIV0104_SID 7
+
+#include <dt-bindings/leds/common.h>
+#include <dt-bindings/pinctrl/qcom,pmic-gpio.h>
+#include <dt-bindings/regulator/qcom,rpmh-regulator.h>
+
+#include "milos.dtsi"
+
+#include "pmk8550.dtsi" // @ 0
+//#include "pmxr2230.dtsi" // @ 1
+#include "pm8550vs.dtsi" // @ 2
+#include "pmr735b.dtsi" // @ 5
+#include "pmiv0104.dtsi" // @ 8
+
+/delete-node/ &rmtfs_mem;
+
+/* Decrease the region */
+&trusted_apps_mem {
+	reg = <0 0xe9500000 0 0x5500000>;
+};
+
+/ {
+        /* Nothing Phone (3a) Pro */
+	model = "Nothing Phone (3a)";
+	compatible = "nothing,asteroids", "qcom,milos";
+	chassis-type = "handset";
+
+	//qcom,pmic-id-size = <8>;
+	//qcom,pmic-id = <0 0 0 0 0 0 0 0>;
+
+	/* FIXME: REMOVE ME */
+	qcom,msm-id = <636 0x10000>, <640 0x10000>, <641 0x10000>;
+	/*
+	 * { 636, "VOLCANO" },
+	 * { 640, "VOLCANO6" },
+	 * { 641, "VOLCANO6P" },
+	 */
+	qcom,board-id = <11 0>;
+	qcom,oem-id = <2>; /* (3a) - 1; (3a) Pro - 2 */
+
+	aliases {
+		serial0 = &uart5;
+	};
+
+	chosen {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		stdout-path = "serial0:115200n8";
+		bootargs = "earlycon clk_ignore_unused pd_ignore_unused regulator_ignore_unused";
+
+		framebuffer: framebuffer@e1000000 {
+			compatible = "simple-framebuffer";
+			reg = <0x0 0xe3940000 0x0 (1080 * 2392 * 4)>;
+			width = <1080>;
+			height = <2392>;
+			stride = <(1080 * 4)>;
+			format = "a8r8g8b8";
+			panel = <&panel>;
+			interconnects = <&mmss_noc MASTER_MDP QCOM_ICC_TAG_ALWAYS
+					 &mc_virt SLAVE_EBI1 QCOM_ICC_TAG_ALWAYS>;
+			clocks = <&gcc GCC_DISP_HF_AXI_CLK>;
+		};
+	};
+
+	/*gpio-keys {
+		compatible = "gpio-keys";
+
+		pinctrl-0 = <&kypd_volp_n>,
+			    <&ai_key_default>;
+		pinctrl-names = "default";
+
+		key-volume-up {
+			label = "Volume up";
+			gpios = <&pmxr2230_gpios 6 GPIO_ACTIVE_LOW>;
+			linux,code = <KEY_VOLUMEUP>;
+			debounce-interval = <15>;
+			linux,can-disable;
+			wakeup-source;
+		};
+
+		key-ai {
+			label = "AI";
+			gpios = <&tlmm 71 GPIO_ACTIVE_LOW>;
+			linux,code = <0xfa>;
+			debounce-interval = <15>;
+			linux,can-disable;
+			wakeup-source;
+		};
+	};*/
+
+	/* Dummy panel for simple-framebuffer dimension info */
+	panel: panel {
+		compatible = "vxn,rm69220";
+		width-mm = <71>;
+		height-mm = <157>;
+	};
+
+	pmic-glink {
+		compatible = "qcom,milos-pmic-glink",
+			     "qcom,sm8550-pmic-glink",
+			     "qcom,pmic-glink";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		orientation-gpios = <&tlmm 131 GPIO_ACTIVE_HIGH>;
+
+		connector@0 {
+			compatible = "usb-c-connector";
+			reg = <0>;
+
+			power-role = "dual";
+			data-role = "dual";
+
+			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				port@0 {
+					reg = <0>;
+
+					pmic_glink_hs_in: endpoint {
+						remote-endpoint = <&usb_1_dwc3_hs>;
+					};
+				};
+			};
+		};
+	};
+
+        reserved-memory {
+		ramoops_mem@81f20000 {
+			compatible = "ramoops";
+			size = <0x400000>;
+			pmsg-size = <0x200000>;
+			mem-type = <0x02>;
+			linux,reserve-contiguous-region;
+			linux,reserve-region;
+			linux,remove-completely;
+			reg = <0x0 0x81f20000 0x0 0x400000>;
+			console-size = <0x200000>;
+		};
+
+		splash_region@e3940000 {
+			label = "cont_splash_region";
+			reg = <0x0 0xe3940000 0x0 (1080 * 2392 * 4)>;
+			no-map;
+		};
+
+		rmtfs_mem: rmtfs-region@ef200000 {
+			compatible = "qcom,rmtfs-mem";
+			reg = <0x0 0xef200000 0x0 0x280000>;
+			no-map;
+
+			qcom,client-id = <1>;
+			qcom,vmid = <QCOM_SCM_VMID_MSS_MSA>;
+		};
+	};
+
+	vph_pwr: regulator-vph-pwr {
+		compatible = "regulator-fixed";
+
+		regulator-name = "vph_pwr";
+		regulator-min-microvolt = <3700000>;
+		regulator-max-microvolt = <3700000>;
+
+		regulator-always-on;
+		regulator-boot-on;
+	};
+};
+
+&apps_rsc {
+	regulators-0 {
+		compatible = "qcom,pm7550-rpmh-regulators";
+		qcom,pmic-id = "b";
+
+		/*
+		 * vdd_l1 - NC
+		 * vdd_l2_l3 = <&vreg_s3b_0p952>;
+		 * vdd_l4_l5 = <&vreg_s2b_1p256>;
+		 * vdd_l6 = <&vreg_s2b_1p256>;
+		 * vdd_l7 = <&vreg_s1b_1p856>;
+		 * vdd_l8 = <&vreg_s1b_1p856>;
+		 * vdd_l9_l10 = <&vreg_s1b_1p856>;
+		 * vdd_l11 - NC
+		 * vdd_l12_l14 = <&vreg_bob>;
+		 * vdd_l13_l16 = <&vreg_bob>;
+		 * vdd_l15_l17_l18_l19_l20_l21_l22_l23 = <&vreg_bob>;
+		 */
+
+		vreg_l2b_0p8: ldo2 {
+			regulator-name = "vreg_l2b_0p8";
+			regulator-min-microvolt = <880000>;
+			regulator-max-microvolt = <912000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
+		vreg_l4b_1p2: ldo4 {
+			regulator-name = "vreg_l4b_1p2";
+			regulator-min-microvolt = <1200000>;
+			regulator-max-microvolt = <1200000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
+		vreg_l7b: ldo7 {
+			regulator-name = "vreg_l7b";
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
+		vreg_l17b: ldo17 {
+			regulator-name = "vreg_l17b";
+			regulator-min-microvolt = <3104000>;
+			regulator-max-microvolt = <3104000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+	};
+};
+
+/*&gcc {
+	protected-clocks = <GCC_PCIE_1_AUX_CLK>,
+			   <GCC_PCIE_1_AUX_CLK_SRC>,
+			   <GCC_PCIE_1_CFG_AHB_CLK>,
+			   <GCC_PCIE_1_MSTR_AXI_CLK>,
+			   <GCC_PCIE_1_PHY_RCHNG_CLK>,
+			   <GCC_PCIE_1_PHY_RCHNG_CLK_SRC>,
+			   <GCC_PCIE_1_PIPE_CLK>,
+			   <GCC_PCIE_1_PIPE_CLK_SRC>,
+			   <GCC_PCIE_1_PIPE_DIV2_CLK>,
+			   <GCC_PCIE_1_PIPE_DIV2_CLK_SRC>,
+			   <GCC_PCIE_1_SLV_AXI_CLK>,
+			   <GCC_PCIE_1_SLV_Q2A_AXI_CLK>;
+	status = "disabled";
+};*/
+
+&dispcc { status = "disabled"; };
+
+&gpi_dma0 {
+	status = "okay";
+};
+
+&gpi_dma1 {
+	status = "okay";
+};
+
+&i2c1 {
+	/* st,st21nfc nfc@8 */
+
+	//status = "okay";
+};
+
+&i2c7 {
+	/* willsemi,wl28681 pmic@35 */
+	/* awinic,aw20036 glyph@3a */
+	/* willsemi,wl28681 pmic@61 */
+
+	//status = "okay";
+};
+
+/*&i2c8 {
+	/* ics haptic@5f */
+
+	/*status = "okay";
+};*/
+
+&spi0 {
+	/* focaltech,fts touchscreen@0 */
+
+	//status = "okay";
+};
+
+/*&spi6 {
+	/* st,st54spi nfc@0 */
+
+	/*status = "okay";
+};*/
+
+&pm8550vs_c {
+	status = "okay";
+};
+
+&pm8550vs_d {
+	status = "disabled";
+};
+
+&pm8550vs_e {
+	status = "disabled";
+};
+
+&pm8550vs_g {
+	status = "disabled";
+};
+
+&pmiv0104_eusb2_repeater {
+	vdd18-supply = <&vreg_l7b>;
+	vdd3-supply = <&vreg_l17b>;
+
+	qcom,tune-res-fsdif = /bits/ 8 <0x5>;
+	qcom,tune-usb2-amplitude = /bits/ 8 <0x8>;
+	qcom,tune-usb2-disc-thres = /bits/ 8 <0x7>;
+	qcom,tune-usb2-preem = /bits/ 8 <0x6>;
+};
+
+/*&pmxr2230_gpios {
+	kypd_volp_n: kypd-volp-n-state {
+		pins = "gpio6";
+		function = PMIC_GPIO_FUNC_NORMAL;
+		bias-pull-up;
+		input-enable;
+		power-source = <1>;
+	};
+};*/
+
+&qupv3_id_0 {
+	//status = "okay";
+};
+
+&qupv3_id_1 {
+	//status = "okay";
+};
+
+&tlmm {
+	/*
+	 * 13: NFC?
+	 * 63-64: Fingerprint reader (SPI)
+	 */
+	gpio-reserved-ranges = <8 4>, <13 1>, <63 2>;
+	status = "disabled";
+
+	/*
+		GPIO24 - cam_tele_ois
+		GPIO71 - ai_key_default
+		GPIO141 - tfa98xx
+		GPIO143 - ics_haptic_rst
+	*/
+
+	ai_key_default: ai-key-default-state {
+		pins = "gpio71";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
+	};
+};
+
+&uart5 {
+	status = "okay";
+};
+
+&usb_1 {
+	dr_mode = "otg";
+
+	/* USB 2.0 only */
+	qcom,select-utmi-as-pipe-clk;
+
+	status = "okay";
+};
+
+&usb_1_dwc3_hs {
+	remote-endpoint = <&pmic_glink_hs_in>;
+};
+
+&usb_1_hsphy {
+	vdd-supply = <&vreg_l2b_0p8>;
+	vdda12-supply = <&vreg_l4b_1p2>;
+
+	phys = <&pmiv0104_eusb2_repeater>;
+
+	status = "okay";
+};
