@@ -940,6 +940,16 @@
 		};
 	};
 
+	camera_s5kjn1_dw9800w: actuator@c {
+		compatible = "dongwoon,dw9800k",
+			     "dongwoon,dw9800";
+		reg = <0x0c>;
+		vdd-supply = <&vreg_camu_vaf_1p8>;
+
+		dongwoon,sac-mode = <1>;
+		dongwoon,vcm-prescale = <16>;
+	};
+
 	camera@2d {
 		compatible = "samsung,s5kjn1";
 		reg = <0x2d>;
@@ -958,7 +968,7 @@
 		orientation = <1>; /* Rear facing */
 		rotation = <90>;
 
-		lens-focus = <&camu_dw9800w>;
+		lens-focus = <&camera_s5kjn1_dw9800w>;
 
 		port {
 			camera_s5kjn1_ep: endpoint {
