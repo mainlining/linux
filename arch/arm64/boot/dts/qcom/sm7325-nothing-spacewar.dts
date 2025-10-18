@@ -910,13 +910,14 @@
 };
 
 &cci1_i2c0 {
-	camu_dw9800w: actuator@c {
-		compatible = "dongwoon,dw9800w",
+	camera_s5kjn1_dw9800w: actuator@c {
+		compatible = "dongwoon,dw9800k",
 			     "dongwoon,dw9800";
 		reg = <0x0c>;
-
-		vin-supply = <&vreg_cam_vio_1p8>;
 		vdd-supply = <&vreg_camu_vaf_1p8>;
+
+		dongwoon,sac-mode = <1>;
+		dongwoon,vcm-prescale = <16>;
 	};
 
 	camera@2d {
@@ -937,7 +938,7 @@
 		orientation = <1>; /* Rear facing */
 		rotation = <90>;
 
-		lens-focus = <&camu_dw9800w>;
+		lens-focus = <&camera_s5kjn1_dw9800w>;
 
 		port {
 			camera_s5kjn1_ep: endpoint {
