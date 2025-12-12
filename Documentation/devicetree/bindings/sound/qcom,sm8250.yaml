@@ -30,6 +30,7 @@ properties:
       - enum:
           - fairphone,fp4-sndcard
           - fairphone,fp5-sndcard
+          - nothing,spacewar-sndcard
           - qcom,apq8096-sndcard
           - qcom,glymur-sndcard
           - qcom,qcm6490-idp-sndcard
