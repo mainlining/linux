@@ -1440,8 +1440,7 @@
 };
 
 &sound {
-	compatible = "qcom,sm7325-sndcard",
-		     "qcom,sm8250-sndcard";
+	compatible = "nothing,spacewar-sndcard";
 
 	model = "NP1";
 
