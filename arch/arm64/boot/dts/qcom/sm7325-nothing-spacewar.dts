@@ -1063,7 +1063,7 @@
 		reg = <0x34>;
 		reset-gpio = <&tlmm 101 GPIO_ACTIVE_HIGH>;
 
-		#sound-dai-cells = <1>;
+		#sound-dai-cells = <0>;
 	};
 
 	tfa9873_r: codec@35 { /* SPK */
@@ -1072,7 +1072,7 @@
 		reg = <0x35>;
 		reset-gpio = <&tlmm 101 GPIO_ACTIVE_HIGH>;
 
-		#sound-dai-cells = <1>;
+		#sound-dai-cells = <0>;
 	};
 };
 
@@ -1389,7 +1389,7 @@
 &q6afedai {
 	dai@16 {
 		reg = <PRIMARY_MI2S_RX>;
-		qcom,sd-lines = <1>;
+		qcom,sd-lines = <0 1>;
 	};
 
 	dai@113 {
@@ -1514,7 +1514,7 @@
 		};
 
 		codec {
-			sound-dai = <&tfa9873_l 0>, <&tfa9873_r 0>;
+			sound-dai = <&tfa9873_l>, <&tfa9873_r>;
 		};
 
 		platform {
