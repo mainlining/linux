@@ -41,6 +41,7 @@
 		#size-cells = <2>;
 		ranges;
 
+		bootargs = "console=ttyGS0,115200 kgdboc=ttyGS0,115200 nokaslr kgdbwait";
 		stdout-path = "serial0:115200n8";
 
 		framebuffer0: framebuffer@e1000000 {
