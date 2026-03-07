@@ -536,6 +536,9 @@ CONFIG_PANIC_TIMEOUT=10
 # CONFIG_FTRACE is not set
 CONFIG_MEMTEST=y
 
+# linux-postmarketos-qcom-sc7280
+CONFIG_EFI_ZBOOT=y
+
 # Nothing Phone (1) : sm7325-nothing-spacewar
 CONFIG_DRM_PANEL_VISIONOX_RM692E5=m
 CONFIG_SND_SOC_TFA9872=m
