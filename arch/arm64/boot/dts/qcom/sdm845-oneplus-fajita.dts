@@ -40,7 +40,16 @@
 };
 
 &i2c4 {
-	/* nxp,tfa9894 @ 0x34 */
+	clock-frequency = <400000>;
+
+	status = "okay";
+
+	tfa9894_codec: audio-codec@34 {
+		compatible = "nxp,tfa9894";
+		reg = <0x34>;
+		reset-gpios = <&tlmm 69 GPIO_ACTIVE_HIGH>;
+		#sound-dai-cells = <0>;
+	};
 };
 
 &bq27441_fg {
@@ -61,12 +70,11 @@
 	monitored-battery = <&battery>;
 };
 
-/*
- * The TFA9894 codec is currently unsupported.
- * We need to delete the node to allow the soundcard
- * to probe for headphones/earpiece.
- */
-/delete-node/ &speaker_playback_dai;
+&speaker_playback_dai {
+	codec {
+		sound-dai = <&tfa9894_codec>;
+	};
+};
 
 &rmi4_f12 {
 	touchscreen-y-mm = <148>;
