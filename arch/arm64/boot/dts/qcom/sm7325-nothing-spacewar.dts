@@ -15,6 +15,7 @@
 #include <dt-bindings/regulator/qcom,rpmh-regulator.h>
 #include <dt-bindings/sound/qcom,q6afe.h>
 #include <dt-bindings/sound/qcom,q6asm.h>
+#include <dt-bindings/sound/qcom,q6voice.h>
 
 #include "sm7325.dtsi"
 #include "pm7325.dtsi"
@@ -1375,6 +1376,24 @@
 	};
 };
 
+&q6cvp {
+	status = "okay";
+};
+
+&q6cvs {
+	status = "okay";
+};
+
+&q6mvm {
+	status = "okay";
+};
+
+&q6voicedai {
+	dai@1 {
+		reg = <VOICEMMODE1>;
+	};
+};
+
 &qfprom {
 	vcc-supply = <&vdd_qfprom>;
 };
@@ -1507,6 +1526,14 @@
 
 		codec {
 			sound-dai = <&wcd9385 1>, <&swr1 0>, <&lpass_tx_macro 0>;
+		};
+	};
+
+	voicemmode1-dai-link {
+		link-name = "VoiceMMode1";
+
+		cpu {
+			sound-dai = <&q6voicedai VOICEMMODE1>;
 		};
 	};
 };
