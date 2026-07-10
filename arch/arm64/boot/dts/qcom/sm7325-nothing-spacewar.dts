@@ -1059,6 +1059,9 @@
 		reg = <0x34>;
 		reset-gpio = <&tlmm 101 GPIO_ACTIVE_HIGH>;
 
+		sound-channel = <0>;
+		sound-name-prefix = "Speaker Top";
+
 		#sound-dai-cells = <1>;
 	};
 
@@ -1067,6 +1070,9 @@
 			     "nxp,tfa9872";
 		reg = <0x35>;
 		reset-gpio = <&tlmm 101 GPIO_ACTIVE_HIGH>;
+
+		sound-channel = <1>;
+		sound-name-prefix = "Speaker Bottom";
 
 		#sound-dai-cells = <1>;
 	};
@@ -1442,13 +1448,20 @@
 
 	model = "NP1";
 
+	aux-devs = <&tfa9873_l>, <&tfa9873_r>;
+	widgets = "Speaker", "Speaker Top",
+		  "Speaker", "Speaker Bottom";
+	pin-switches = "Speaker Top", "Speaker Bottom";
+
 	pinctrl-0 = <&pri_mi2s_bck_active &pri_mi2s_din_active
 		     &pri_mi2s_dout_active &pri_mi2s_ws_active>;
 	pinctrl-1 = <&pri_mi2s_sleep>;
 	pinctrl-names = "default",
 			"sleep";
 
-	audio-routing = "AMIC1", "MIC BIAS1",
+	audio-routing = "Speaker Top", "Speaker Top Speaker",
+			"Speaker Bottom", "Speaker Bottom Speaker",
+			"AMIC1", "MIC BIAS1",
 			"AMIC2", "MIC BIAS2",
 			"AMIC3", "MIC BIAS3",
 			"AMIC4", "MIC BIAS4",
