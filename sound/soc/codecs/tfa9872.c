@@ -10,6 +10,7 @@
 #include <linux/module.h>
 #include <linux/regmap.h>
 #include <sound/soc.h>
+#include <sound/tlv.h>
 
 #define TFA987X_SYS_CTRL0		0x00
 #define TFA987X_SYS_CTRL0_PWDN_MSK	BIT(0)
@@ -85,6 +86,13 @@
 #define TFA9874_DCDC_CTRL6_DCVOF_MSK	GENMASK(8,  3)
 #define TFA9874_DCDC_CTRL6_DCVOS_MSK	GENMASK(14,  9)
 
+static const DECLARE_TLV_DB_SCALE(tfa987x_amp_gain_tlv, 0, 50, 0);
+
+static const struct snd_kcontrol_new tfa987x_controls[] = {
+	SOC_SINGLE_TLV("Volume", TFA987X_AMP_CFG,
+		       5, 0xff, 0, tfa987x_amp_gain_tlv),
+};
+
 static int tfa987x_digital_mute(struct snd_soc_dai *codec_dai, int mute, int stream)
 {
 	struct snd_soc_component *component = codec_dai->component;
@@ -110,6 +118,8 @@ static const struct snd_soc_dapm_route tfa987x_dapm_routes[] = {
 };
 
 static const struct snd_soc_component_driver tfa987x_component = {
+	.controls		= tfa987x_controls,
+	.num_controls		= ARRAY_SIZE(tfa987x_controls),
 	.dapm_widgets		= tfa987x_dapm_widgets,
 	.num_dapm_widgets	= ARRAY_SIZE(tfa987x_dapm_widgets),
 	.dapm_routes		= tfa987x_dapm_routes,
