@@ -137,6 +137,18 @@ config INPUT_AW86927
 	  To compile this driver as a module, choose M here: the
 	  module will be called aw86927.
 
+config INPUT_QCOM_HV_HAPTICS
+	tristate "Qualcomm High-Voltage Haptics (PM8350B/PM5100)"
+	depends on OF
+	select INPUT_FF_MEMLESS
+	help
+	  Minimal driver for Qualcomm PMIC high-voltage haptics block.
+	  Supports FF_RUMBLE (direct play) and FF_PERIODIC with
+	  envelope-aware waveform generation.
+
+	  To compile as a module, choose M: the module will be
+	  called qcom-hv-haptics.
+
 config INPUT_BBNSM_PWRKEY
 	tristate "NXP BBNSM Power Key Driver"
 	depends on ARCH_MXC || COMPILE_TEST
