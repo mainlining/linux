@@ -1194,6 +1194,15 @@
 	};
 };
 
+&pm8350b {
+	pm8350b_haptics: qcom,hv-haptics@f000 {
+		compatible = "qcom,hv-haptics";
+		reg = <0xf000>, <0xf100>;
+		qcom,vmax-mv = <3600>;
+		status = "okay";
+	};
+};
+
 &pm8350c_flash {
 	status = "okay";
 
