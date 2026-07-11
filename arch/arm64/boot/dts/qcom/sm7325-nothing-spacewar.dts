@@ -879,8 +879,7 @@
 		};
 
 		port@2 {
-			csiphy2_ep: endpoint {
-				clock-lanes = <7>;
+			csiphy3_ep: endpoint {
 				data-lanes = <0 1 2 3>;
 				bus-type = <MEDIA_BUS_TYPE_CSI2_DPHY>;
 				remote-endpoint = <&camera_s5kjn1_ep>;
@@ -965,9 +964,8 @@
 		port {
 			camera_s5kjn1_ep: endpoint {
 				data-lanes = <1 2 3 4>;
-				bus-type = <MEDIA_BUS_TYPE_CSI2_DPHY>;
-				link-frequencies = /bits/ 64 <600000000>;
-				remote-endpoint = <&csiphy2_ep>;
+				link-frequencies = /bits/ 64 <700000000>;
+				remote-endpoint = <&csiphy3_ep>;
 			};
 		};
 	};
