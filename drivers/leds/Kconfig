@@ -148,6 +148,17 @@ config LEDS_AW2013
 	  To compile this driver as a module, choose M here: the module
 	  will be called leds-aw2013.
 
+config LEDS_AW21018
+	tristate "LED support for Awinic AW21018"
+	depends on LEDS_CLASS && I2C && OF
+	help
+	  This option enables support for the Awinic AW21018 18-channel
+	  LED controller. It is an I2C device with individually controlled
+	  LEDs and 12-bit PWM brightness resolution.
+
+	  To compile this driver as a module, choose M here: the module
+	  will be called leds-aw21018.
+
 config LEDS_BCM6328
 	tristate "LED Support for Broadcom BCM6328"
 	depends on LEDS_CLASS
