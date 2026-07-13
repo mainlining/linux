@@ -1030,7 +1030,119 @@
 	clock-frequency = <100000>;
 	status = "okay";
 
-	/* awinic,aw21018 (Glyph LED) @ 20 */
+	aw21018: led-controller@20 {
+		compatible = "awinic,aw21018";
+		reg = <0x20>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		enable-gpios = <&tlmm 18 GPIO_ACTIVE_HIGH>;
+
+		awinic,global-current = /bits/ 8 <0x60>;
+
+		awinic,sl-values = /bits/ 8
+				   <0x50 0xbd 0xbd 0xbf 0xbf 0x00 0xe9 0x07 0x07
+				    0x07 0x07 0x07 0x07 0x07 0x07 0x07 0x2a 0x00>;
+
+		awinic,brightness-resolution = <3>;
+		awinic,osc-clock = <0>;
+
+		led@0 {
+			reg = <0x0>;
+			label = "line";
+			color = <LED_COLOR_ID_WHITE>;
+		};
+
+		led@1 {
+			reg = <0x1>;
+			label = "circle-bottom-left";
+			color = <LED_COLOR_ID_WHITE>;
+		};
+
+		led@2 {
+			reg = <0x2>;
+			label = "circle-bottom-right";
+			color = <LED_COLOR_ID_WHITE>;
+		};
+
+		led@3 {
+			reg = <0x3>;
+			label = "circle-top-right";
+			color = <LED_COLOR_ID_WHITE>;
+		};
+
+		led@4 {
+			reg = <0x4>;
+			label = "circle-top-left";
+			color = <LED_COLOR_ID_WHITE>;
+		};
+
+		led@6 {
+			reg = <0x6>;
+			label = "camera";
+			color = <LED_COLOR_ID_WHITE>;
+		};
+
+		led@7 {
+			reg = <0x7>;
+			label = "charging-8";
+			color = <LED_COLOR_ID_WHITE>;
+		};
+
+		led@8 {
+			reg = <0x8>;
+			label = "charging-3";
+			color = <LED_COLOR_ID_WHITE>;
+		};
+
+		led@9 {
+			reg = <0x9>;
+			label = "charging-5";
+			color = <LED_COLOR_ID_WHITE>;
+		};
+
+		led@a {
+			reg = <0xa>;
+			label = "charging-2";
+			color = <LED_COLOR_ID_WHITE>;
+		};
+
+		led@b {
+			reg = <0xb>;
+			label = "charging-4";
+			color = <LED_COLOR_ID_WHITE>;
+		};
+
+		led@c {
+			reg = <0xc>;
+			label = "charging-1";
+			color = <LED_COLOR_ID_WHITE>;
+		};
+
+		led@d {
+			reg = <0xd>;
+			label = "charging-6";
+			color = <LED_COLOR_ID_WHITE>;
+		};
+
+		led@e {
+			reg = <0xe>;
+			label = "charging-7";
+			color = <LED_COLOR_ID_WHITE>;
+		};
+
+		led@f {
+			reg = <0xf>;
+			label = "bottom";
+			color = <LED_COLOR_ID_WHITE>;
+		};
+
+		led@10 {
+			reg = <0x10>;
+			label = "red";
+			color = <LED_COLOR_ID_RED>;
+		};
+	};
 
 	typec-mux@42 {
 		compatible = "fcs,fsa4480";
