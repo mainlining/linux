@@ -15,7 +15,7 @@
 #include <media/v4l2-fwnode.h>
 
 #define S5KJN1_LINK_FREQ_700MHZ		(700ULL * HZ_PER_MHZ)
-#define S5KJN1_MCLK_FREQ_24MHZ		(24 * HZ_PER_MHZ)
+#define S5KJN1_MCLK_FREQ_24MHZ		(19.2 * HZ_PER_MHZ)
 #define S5KJN1_DATA_LANES		4
 
 /* Register map is similar to MIPI CCS compliant camera sensors */
