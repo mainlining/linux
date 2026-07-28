@@ -942,8 +942,7 @@
 
 &cci1_i2c0 {
 	camu_dw9800w: actuator@c {
-		compatible = "dongwoon,dw9800w",
-			     "dongwoon,dw9800k";
+		compatible = "dongwoon,dw9800w";
 		reg = <0x0c>;
 		vdd-supply = <&vreg_camu_vaf_1p8>;
 
