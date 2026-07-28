@@ -22,6 +22,7 @@ properties:
       - dongwoon,dw9719
       - dongwoon,dw9761
       - dongwoon,dw9800k
+      - dongwoon,dw9800w
 
   reg:
     maxItems: 1
