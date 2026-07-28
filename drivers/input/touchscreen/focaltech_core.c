@@ -469,7 +469,9 @@ static void focaltech_dispatch_event(struct focaltech_core *cd,
 	case FOCALTECH_TOUCH_EXTRA_MSG:
 	case FOCALTECH_TOUCH_PEN:
 	case FOCALTECH_TOUCH_GESTURE:
+		break;
 	case FOCALTECH_TOUCH_FW_INIT:
+		dev_warn_ratelimited(cd->dev, "Firmware init event\n");
 		break;
 	case FOCALTECH_TOUCH_IGNORE:
 	case FOCALTECH_TOUCH_ERROR:
@@ -592,6 +594,12 @@ static int focaltech_resume(struct device *dev)
 	ret = focaltech_power_on(cd);
 	if (ret)
 		return ret;
+
+	ret = focaltech_load_firmware(cd);
+	if (ret) {
+		focaltech_power_off(cd);
+		return ret;
+	}
 
 	enable_irq(cd->irq);
 
