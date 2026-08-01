@@ -12,6 +12,7 @@
 #include <dt-bindings/iio/qcom,spmi-adc7-pm8350b.h>
 #include <dt-bindings/iio/qcom,spmi-adc7-pmk8350.h>
 #include <dt-bindings/leds/common.h>
+#include <dt-bindings/media/video-interfaces.h>
 #include <dt-bindings/pinctrl/qcom,pmic-gpio.h>
 #include <dt-bindings/regulator/qcom,rpmh-regulator.h>
 #include <dt-bindings/sound/qcom,q6afe.h>
@@ -831,6 +832,23 @@
 	};
 };
 
+&camss {
+	vdda-phy-supply = <&vreg_l10c_0p88>;
+	vdda-pll-supply = <&vreg_l6b_1p2>;
+
+	status = "okay";
+
+	ports {
+		port@2 {
+			csiphy2_ep: endpoint {
+				data-lanes = <0 1 2 3>;
+				bus-type = <MEDIA_BUS_TYPE_CSI2_DPHY>;
+				remote-endpoint = <&camera_s5kjn1_ep>;
+			};
+		};
+	};
+};
+
 &cci0 {
 	/*
 	 * cci0_i2c1 bus is unused and GPIO 71&72 are repurposed.
@@ -860,7 +878,34 @@
 
 &cci1_i2c0 {
 	/* actuator (For Ultra Wide sensor) @ 0xc */
-	/* D-PHY samsung,s5kjn1 (Ultra Wide) @ 0x2d */
+
+	camu_s5kjn1: camera@2d {
+		compatible = "samsung,s5kjn1";
+		reg = <0x2d>;
+
+		vdda-supply = <&vreg_camu_vana_2p8>;
+		vddd-supply = <&vreg_camu_vdig_1p1>;
+		vddio-supply = <&vreg_cam_vio_1p8>;
+
+		clocks = <&camcc CAM_CC_MCLK2_CLK>;
+		assigned-clocks = <&camcc CAM_CC_MCLK2_CLK>;
+		assigned-clock-rates = <19200000>;
+
+		reset-gpios = <&tlmm 77 GPIO_ACTIVE_LOW>;
+		pinctrl-0 = <&cam_mclk2_default>;
+		pinctrl-names = "default";
+
+		orientation = <1>; /* Rear facing */
+		rotation = <90>;
+
+		port {
+			camera_s5kjn1_ep: endpoint {
+				data-lanes = <1 2 3 4>;
+				link-frequencies = /bits/ 64 <700000000>;
+				remote-endpoint = <&csiphy2_ep>;
+			};
+		};
+	};
 
 	camu_gt24p128e: eeprom@51 {
 		compatible = "giantec,gt24p128e",
