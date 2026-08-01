@@ -1328,7 +1328,30 @@
 &spi13 {
 	status = "okay";
 
-	/* focaltech,ft3680 (Touchscreen) @ 0 */
+	touchscreen@0 {
+		compatible = "focaltech,ft3680";
+		reg = <0x0>;
+
+		interrupt-parent = <&tlmm>;
+		interrupts = <81 IRQ_TYPE_EDGE_FALLING>;
+
+		reset-gpios = <&tlmm 105 GPIO_ACTIVE_LOW>;
+
+		spi-max-frequency = <6000000>;
+
+		vdd-supply = <&vdd_ts>;
+		iovdd-supply = <&vreg_l8c_1p8>;
+
+		firmware-name =
+			"qcom/sm7325/nothing/spacewar/focaltech_ts_novatek.bin";
+
+		pinctrl-0 = <&ts_int_n>,
+			    <&ts_reset_n>;
+		pinctrl-names = "default";
+
+		touchscreen-size-x = <1080>;
+		touchscreen-size-y = <2400>;
+	};
 };
 
 &tlmm {
@@ -1412,6 +1435,21 @@
 		pins = "gpio86";
 		function = "gpio";
 		bias-pull-down;
+	};
+
+
+	ts_int_n: ts-int-n-state {
+		pins = "gpio81";
+		function = "gpio";
+		drive-strength = <8>;
+		bias-pull-up;
+	};
+
+	ts_reset_n: ts-reset-n-state {
+		pins = "gpio105";
+		function = "gpio";
+		drive-strength = <8>;
+		bias-pull-up;
 	};
 };
 
