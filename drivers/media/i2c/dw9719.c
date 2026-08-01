@@ -44,6 +44,7 @@
 
 #define DW9719_INFO			CCI_REG8(0)
 #define DW9719_ID			0xF1
+#define DW9800_ID			0xF2
 #define DW9761_ID			0xF4
 
 #define DW9719_CONTROL			CCI_REG8(2)
@@ -72,6 +73,8 @@
 #define DW9800K_MODE_SAC_SHIFT		6
 #define DW9800K_DEFAULT_VCM_FREQ		0x10
 
+#define DW9800W_DEFAULT_VCM_FREQ	0x60
+
 #define to_dw9719_device(x) container_of(x, struct dw9719_device, sd)
 
 enum dw9719_model {
@@ -79,6 +82,7 @@ enum dw9719_model {
 	DW9719,
 	DW9761,
 	DW9800K,
+	DW9800W,
 };
 
 struct dw9719_device {
@@ -140,10 +144,6 @@ static int dw9719_power_up(struct dw9719_device *dw9719, bool detect)
 			dw9719->sac_mode = DW9718S_DEFAULT_SAC;
 			dw9719->vcm_freq = DW9718S_DEFAULT_VCM_FREQ;
 			goto props;
-		case DW9800K:
-			dw9719->sac_mode = DW9800K_DEFAULT_SAC;
-			dw9719->vcm_freq = DW9800K_DEFAULT_VCM_FREQ;
-			goto props;
 		default:
 			break;
 		}
@@ -158,6 +158,21 @@ static int dw9719_power_up(struct dw9719_device *dw9719, bool detect)
 			dw9719->mode_low_bits = 0x00;
 			dw9719->sac_mode = DW9719_DEFAULT_SAC;
 			dw9719->vcm_freq = DW9719_DEFAULT_VCM_FREQ;
+			break;
+		case DW9800_ID:
+			dw9719->sac_mode = DW9800K_DEFAULT_SAC;
+			switch (dw9719->model) {
+			case DW9800K:
+				dw9719->model = DW9800K;
+				dw9719->vcm_freq = DW9800K_DEFAULT_VCM_FREQ;
+				break;
+			case DW9800W:
+				dw9719->model = DW9800W;
+				dw9719->vcm_freq = DW9800W_DEFAULT_VCM_FREQ;
+				break;
+			default:
+				return -ENODEV;
+			}
 			break;
 		case DW9761_ID:
 			dw9719->model = DW9761;
@@ -189,6 +204,7 @@ props:
 
 	switch (dw9719->model) {
 	case DW9800K:
+	case DW9800W:
 		cci_write(dw9719->regmap, DW9719_CONTROL, DW9719_ENABLE_RINGING, &ret);
 		cci_write(dw9719->regmap, DW9719_MODE,
 			  dw9719->sac_mode << DW9800K_MODE_SAC_SHIFT, &ret);
@@ -453,6 +469,7 @@ static const struct of_device_id dw9719_of_table[] = {
 	{ .compatible = "dongwoon,dw9719", .data = (const void *)DW9719 },
 	{ .compatible = "dongwoon,dw9761", .data = (const void *)DW9761 },
 	{ .compatible = "dongwoon,dw9800k", .data = (const void *)DW9800K },
+	{ .compatible = "dongwoon,dw9800w", .data = (const void *)DW9800W },
 	{ }
 };
 MODULE_DEVICE_TABLE(of, dw9719_of_table);
