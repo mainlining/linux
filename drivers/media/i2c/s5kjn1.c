@@ -15,6 +15,7 @@
 #include <media/v4l2-fwnode.h>
 
 #define S5KJN1_LINK_FREQ_700MHZ		(700ULL * HZ_PER_MHZ)
+#define S5KJN1_MCLK_FREQ_19P2MHZ	(19200 * HZ_PER_KHZ)
 #define S5KJN1_MCLK_FREQ_24MHZ		(24 * HZ_PER_MHZ)
 #define S5KJN1_DATA_LANES		4
 
@@ -24,6 +25,24 @@
 
 #define S5KJN1_REG_CTRL_MODE		CCI_REG8(0x0100)
 #define S5KJN1_MODE_STREAMING		BIT(0)
+
+#define S5KJN1_REG_EXTCLK_INTEGER	CCI_REG16(0x0136)
+#define S5KJN1_REG_EXTCLK_FRACTION	CCI_REG16(0x013e)
+#define S5KJN1_REG_VT_PIX_CLK_DIV	CCI_REG16(0x0300)
+#define S5KJN1_REG_VT_SYS_CLK_DIV	CCI_REG16(0x0302)
+#define S5KJN1_REG_VT_PRE_PLL_CLK_DIV	CCI_REG16(0x0304)
+#define S5KJN1_REG_VT_PLL_MULTIPLIER	CCI_REG16(0x0306)
+
+#define S5KJN1_EXTCLK_19P2MHZ_INTEGER	0x1300
+#define S5KJN1_EXTCLK_19P2MHZ_FRACTION	0x00c8
+#define S5KJN1_EXTCLK_24MHZ_INTEGER	0x1800
+#define S5KJN1_EXTCLK_24MHZ_FRACTION	0x0000
+#define S5KJN1_VT_PIX_CLK_DIV		0x0006
+#define S5KJN1_VT_SYS_CLK_DIV		0x0001
+#define S5KJN1_VT_PRE_PLL_DIV_19P2MHZ	0x0003
+#define S5KJN1_VT_PRE_PLL_DIV_24MHZ	0x0004
+#define S5KJN1_VT_PLL_MUL_19P2MHZ	0x0083
+#define S5KJN1_VT_PLL_MUL_24MHZ		0x008c
 
 #define S5KJN1_REG_ORIENTATION		CCI_REG8(0x0101)
 #define S5KJN1_VFLIP			BIT(1)
@@ -70,6 +89,17 @@ struct s5kjn1_reg_list {
 	unsigned int num_regs;
 };
 
+enum s5kjn1_mclk {
+	S5KJN1_MCLK_19P2MHZ,
+	S5KJN1_MCLK_24MHZ,
+	S5KJN1_NUM_MCLKS,
+};
+
+static const unsigned long s5kjn1_mclk_freqs[S5KJN1_NUM_MCLKS] = {
+	[S5KJN1_MCLK_19P2MHZ] = S5KJN1_MCLK_FREQ_19P2MHZ,
+	[S5KJN1_MCLK_24MHZ] = S5KJN1_MCLK_FREQ_24MHZ,
+};
+
 struct s5kjn1_mode {
 	u32 width;			/* Frame width in pixels */
 	u32 height;			/* Frame height in pixels */
@@ -78,7 +108,10 @@ struct s5kjn1_mode {
 	u32 exposure;			/* Default exposure value */
 	u32 exposure_margin;		/* Exposure margin */
 
-	const struct s5kjn1_reg_list reg_list;	/* Sensor register setting */
+	/* Sensor register setting */
+	const struct s5kjn1_reg_list mode_setup_reg_list;
+	const struct s5kjn1_reg_list clk_reg_list[S5KJN1_NUM_MCLKS];
+	const struct s5kjn1_reg_list frame_timing_reg_list;
 };
 
 static const char * const s5kjn1_test_pattern_menu[] = {
@@ -93,6 +126,7 @@ struct s5kjn1 {
 	struct device *dev;
 	struct regmap *regmap;
 	struct clk *mclk;
+	unsigned int mclk_index;
 	struct gpio_desc *reset_gpio;
 	struct regulator *afvdd;	/* Autofocus actuator power */
 	struct regulator *vdda;		/* Analog power */
@@ -147,7 +181,7 @@ static const struct cci_reg_sequence init_array_setting[] = {
 	{ CCI_REG16(0x011a), 0x0001 },
 };
 
-static const struct cci_reg_sequence s5kjn1_4080x3072_30fps_mode[] = {
+static const struct cci_reg_sequence s5kjn1_4080x3072_30fps_mode_setup[] = {
 	{ CCI_REG16(0x6028), 0x2400 },
 	{ CCI_REG16(0x602a), 0x1a28 },
 	{ CCI_REG16(0x6f12), 0x4c00 },
@@ -403,21 +437,39 @@ static const struct cci_reg_sequence s5kjn1_4080x3072_30fps_mode[] = {
 	{ CCI_REG16(0x0110), 0x1002 },
 	{ CCI_REG16(0x0114), 0x0301 },
 	{ CCI_REG16(0x0116), 0x3000 },
+};
 
-	/* Clock settings */
-	{ CCI_REG16(0x0136), 0x1800 },
-	{ CCI_REG16(0x013e), 0x0000 },
-	{ CCI_REG16(0x0300), 0x0006 },
-	{ CCI_REG16(0x0302), 0x0001 },
-	{ CCI_REG16(0x0304), 0x0004 },
-	{ CCI_REG16(0x0306), 0x008c },
+static const struct cci_reg_sequence s5kjn1_4080x3072_30fps_19p2mhz_clk[] = {
+	{ S5KJN1_REG_EXTCLK_INTEGER, S5KJN1_EXTCLK_19P2MHZ_INTEGER },
+	{ S5KJN1_REG_EXTCLK_FRACTION, S5KJN1_EXTCLK_19P2MHZ_FRACTION },
+	{ S5KJN1_REG_VT_PIX_CLK_DIV, S5KJN1_VT_PIX_CLK_DIV },
+	{ S5KJN1_REG_VT_SYS_CLK_DIV, S5KJN1_VT_SYS_CLK_DIV },
+	{ S5KJN1_REG_VT_PRE_PLL_CLK_DIV, S5KJN1_VT_PRE_PLL_DIV_19P2MHZ },
+	{ S5KJN1_REG_VT_PLL_MULTIPLIER, S5KJN1_VT_PLL_MUL_19P2MHZ },
+	{ CCI_REG16(0x0308), 0x0008 },
+	{ CCI_REG16(0x030a), 0x0001 },
+	{ CCI_REG16(0x030c), 0x0000 },
+	{ CCI_REG16(0x030e), 0x0003 },
+	{ CCI_REG16(0x0310), 0x0089 },
+	{ CCI_REG16(0x0312), 0x0000 },
+};
+
+static const struct cci_reg_sequence s5kjn1_4080x3072_30fps_24mhz_clk[] = {
+	{ S5KJN1_REG_EXTCLK_INTEGER, S5KJN1_EXTCLK_24MHZ_INTEGER },
+	{ S5KJN1_REG_EXTCLK_FRACTION, S5KJN1_EXTCLK_24MHZ_FRACTION },
+	{ S5KJN1_REG_VT_PIX_CLK_DIV, S5KJN1_VT_PIX_CLK_DIV },
+	{ S5KJN1_REG_VT_SYS_CLK_DIV, S5KJN1_VT_SYS_CLK_DIV },
+	{ S5KJN1_REG_VT_PRE_PLL_CLK_DIV, S5KJN1_VT_PRE_PLL_DIV_24MHZ },
+	{ S5KJN1_REG_VT_PLL_MULTIPLIER, S5KJN1_VT_PLL_MUL_24MHZ },
 	{ CCI_REG16(0x0308), 0x0008 },
 	{ CCI_REG16(0x030a), 0x0001 },
 	{ CCI_REG16(0x030c), 0x0000 },
 	{ CCI_REG16(0x030e), 0x0004 },
 	{ CCI_REG16(0x0310), 0x0092 },
 	{ CCI_REG16(0x0312), 0x0000 },
+};
 
+static const struct cci_reg_sequence s5kjn1_4080x3072_30fps_frame_timing[] = {
 	{ CCI_REG16(0x080e), 0x0000 },
 	{ S5KJN1_REG_VTS,    0x10c0 },
 	{ S5KJN1_REG_HTS,    0x1100 },
@@ -431,7 +483,7 @@ static const struct cci_reg_sequence s5kjn1_4080x3072_30fps_mode[] = {
 	{ CCI_REG16(0x0816), 0x1c00 },
 };
 
-static const struct cci_reg_sequence s5kjn1_8160x6144_10fps_mode[] = {
+static const struct cci_reg_sequence s5kjn1_8160x6144_10fps_mode_setup[] = {
 	{ CCI_REG16(0x6028), 0x2400 },
 	{ CCI_REG16(0x602a), 0x1a28 },
 	{ CCI_REG16(0x6f12), 0x4c00 },
@@ -687,21 +739,39 @@ static const struct cci_reg_sequence s5kjn1_8160x6144_10fps_mode[] = {
 	{ CCI_REG16(0x0110), 0x1002 },
 	{ CCI_REG16(0x0114), 0x0300 },
 	{ CCI_REG16(0x0116), 0x3000 },
+};
 
-	/* Clock settings */
-	{ CCI_REG16(0x0136), 0x1800 },
-	{ CCI_REG16(0x013e), 0x0000 },
-	{ CCI_REG16(0x0300), 0x0006 },
-	{ CCI_REG16(0x0302), 0x0001 },
-	{ CCI_REG16(0x0304), 0x0004 },
-	{ CCI_REG16(0x0306), 0x008c },
+static const struct cci_reg_sequence s5kjn1_8160x6144_10fps_19p2mhz_clk[] = {
+	{ S5KJN1_REG_EXTCLK_INTEGER, S5KJN1_EXTCLK_19P2MHZ_INTEGER },
+	{ S5KJN1_REG_EXTCLK_FRACTION, S5KJN1_EXTCLK_19P2MHZ_FRACTION },
+	{ S5KJN1_REG_VT_PIX_CLK_DIV, S5KJN1_VT_PIX_CLK_DIV },
+	{ S5KJN1_REG_VT_SYS_CLK_DIV, S5KJN1_VT_SYS_CLK_DIV },
+	{ S5KJN1_REG_VT_PRE_PLL_CLK_DIV, S5KJN1_VT_PRE_PLL_DIV_19P2MHZ },
+	{ S5KJN1_REG_VT_PLL_MULTIPLIER, S5KJN1_VT_PLL_MUL_19P2MHZ },
+	{ CCI_REG16(0x0308), 0x0008 },
+	{ CCI_REG16(0x030a), 0x0001 },
+	{ CCI_REG16(0x030c), 0x0000 },
+	{ CCI_REG16(0x030e), 0x0003 },
+	{ CCI_REG16(0x0310), 0x006d },
+	{ CCI_REG16(0x0312), 0x0000 },
+};
+
+static const struct cci_reg_sequence s5kjn1_8160x6144_10fps_24mhz_clk[] = {
+	{ S5KJN1_REG_EXTCLK_INTEGER, S5KJN1_EXTCLK_24MHZ_INTEGER },
+	{ S5KJN1_REG_EXTCLK_FRACTION, S5KJN1_EXTCLK_24MHZ_FRACTION },
+	{ S5KJN1_REG_VT_PIX_CLK_DIV, S5KJN1_VT_PIX_CLK_DIV },
+	{ S5KJN1_REG_VT_SYS_CLK_DIV, S5KJN1_VT_SYS_CLK_DIV },
+	{ S5KJN1_REG_VT_PRE_PLL_CLK_DIV, S5KJN1_VT_PRE_PLL_DIV_24MHZ },
+	{ S5KJN1_REG_VT_PLL_MULTIPLIER, S5KJN1_VT_PLL_MUL_24MHZ },
 	{ CCI_REG16(0x0308), 0x0008 },
 	{ CCI_REG16(0x030a), 0x0001 },
 	{ CCI_REG16(0x030c), 0x0000 },
 	{ CCI_REG16(0x030e), 0x0004 },
 	{ CCI_REG16(0x0310), 0x0074 },
 	{ CCI_REG16(0x0312), 0x0000 },
+};
 
+static const struct cci_reg_sequence s5kjn1_8160x6144_10fps_frame_timing[] = {
 	{ CCI_REG16(0x080e), 0x0000 },
 	{ S5KJN1_REG_VTS,    0x1900 },
 	{ S5KJN1_REG_HTS,    0x21f0 },
@@ -722,9 +792,23 @@ static const struct s5kjn1_mode s5kjn1_supported_modes[] = {
 		.vts = 4288,
 		.exposure = 3840,
 		.exposure_margin = 22,
-		.reg_list = {
-			.regs = s5kjn1_4080x3072_30fps_mode,
-			.num_regs = ARRAY_SIZE(s5kjn1_4080x3072_30fps_mode),
+		.mode_setup_reg_list = {
+			.regs = s5kjn1_4080x3072_30fps_mode_setup,
+			.num_regs = ARRAY_SIZE(s5kjn1_4080x3072_30fps_mode_setup),
+		},
+		.clk_reg_list = {
+			[S5KJN1_MCLK_19P2MHZ] = {
+				.regs = s5kjn1_4080x3072_30fps_19p2mhz_clk,
+				.num_regs = ARRAY_SIZE(s5kjn1_4080x3072_30fps_19p2mhz_clk),
+			},
+			[S5KJN1_MCLK_24MHZ] = {
+				.regs = s5kjn1_4080x3072_30fps_24mhz_clk,
+				.num_regs = ARRAY_SIZE(s5kjn1_4080x3072_30fps_24mhz_clk),
+			},
+		},
+		.frame_timing_reg_list = {
+			.regs = s5kjn1_4080x3072_30fps_frame_timing,
+			.num_regs = ARRAY_SIZE(s5kjn1_4080x3072_30fps_frame_timing),
 		},
 	},
 	{
@@ -734,9 +818,23 @@ static const struct s5kjn1_mode s5kjn1_supported_modes[] = {
 		.vts = 6400,
 		.exposure = 6144,
 		.exposure_margin = 44,
-		.reg_list = {
-			.regs = s5kjn1_8160x6144_10fps_mode,
-			.num_regs = ARRAY_SIZE(s5kjn1_8160x6144_10fps_mode),
+		.mode_setup_reg_list = {
+			.regs = s5kjn1_8160x6144_10fps_mode_setup,
+			.num_regs = ARRAY_SIZE(s5kjn1_8160x6144_10fps_mode_setup),
+		},
+		.clk_reg_list = {
+			[S5KJN1_MCLK_19P2MHZ] = {
+				.regs = s5kjn1_8160x6144_10fps_19p2mhz_clk,
+				.num_regs = ARRAY_SIZE(s5kjn1_8160x6144_10fps_19p2mhz_clk),
+			},
+			[S5KJN1_MCLK_24MHZ] = {
+				.regs = s5kjn1_8160x6144_10fps_24mhz_clk,
+				.num_regs = ARRAY_SIZE(s5kjn1_8160x6144_10fps_24mhz_clk),
+			},
+		},
+		.frame_timing_reg_list = {
+			.regs = s5kjn1_8160x6144_10fps_frame_timing,
+			.num_regs = ARRAY_SIZE(s5kjn1_8160x6144_10fps_frame_timing),
 		},
 	},
 };
@@ -894,8 +992,11 @@ static int s5kjn1_enable_streams(struct v4l2_subdev *sd,
 				 u64 streams_mask)
 {
 	struct s5kjn1 *s5kjn1 = to_s5kjn1(sd);
-	const struct s5kjn1_reg_list *reg_list = &s5kjn1->mode->reg_list;
+	const struct s5kjn1_mode *mode = s5kjn1->mode;
+	const struct s5kjn1_reg_list *clk_reg_list;
 	int ret;
+
+	clk_reg_list = &mode->clk_reg_list[s5kjn1->mclk_index];
 
 	ret = pm_runtime_resume_and_get(s5kjn1->dev);
 	if (ret)
@@ -924,8 +1025,12 @@ static int s5kjn1_enable_streams(struct v4l2_subdev *sd,
 	/* Sensor init settings */
 	cci_multi_reg_write(s5kjn1->regmap, init_array_setting,
 			    ARRAY_SIZE(init_array_setting), &ret);
-	cci_multi_reg_write(s5kjn1->regmap, reg_list->regs,
-			    reg_list->num_regs, &ret);
+	cci_multi_reg_write(s5kjn1->regmap, mode->mode_setup_reg_list.regs,
+			    mode->mode_setup_reg_list.num_regs, &ret);
+	cci_multi_reg_write(s5kjn1->regmap, clk_reg_list->regs,
+			    clk_reg_list->num_regs, &ret);
+	cci_multi_reg_write(s5kjn1->regmap, mode->frame_timing_reg_list.regs,
+			    mode->frame_timing_reg_list.num_regs, &ret);
 	if (ret)
 		goto error;
 
@@ -1199,6 +1304,23 @@ endpoint_free:
 	return ret;
 }
 
+static int s5kjn1_get_mclk_index(struct s5kjn1 *s5kjn1)
+{
+	unsigned long freq = clk_get_rate(s5kjn1->mclk);
+	unsigned int i;
+
+	for (i = 0; i < ARRAY_SIZE(s5kjn1_mclk_freqs); i++) {
+		if (freq == s5kjn1_mclk_freqs[i]) {
+			s5kjn1->mclk_index = i;
+			return 0;
+		}
+	}
+
+	return dev_err_probe(s5kjn1->dev, -EINVAL,
+			     "MCLK clock frequency %lu is not supported\n",
+			     freq);
+}
+
 static int s5kjn1_power_on(struct device *dev)
 {
 	struct v4l2_subdev *sd = dev_get_drvdata(dev);
@@ -1290,7 +1412,6 @@ static int s5kjn1_power_off(struct device *dev)
 static int s5kjn1_probe(struct i2c_client *client)
 {
 	struct s5kjn1 *s5kjn1;
-	unsigned long freq;
 	int ret;
 
 	s5kjn1 = devm_kzalloc(&client->dev, sizeof(*s5kjn1), GFP_KERNEL);
@@ -1310,11 +1431,9 @@ static int s5kjn1_probe(struct i2c_client *client)
 		return dev_err_probe(s5kjn1->dev, PTR_ERR(s5kjn1->mclk),
 				     "failed to get MCLK clock\n");
 
-	freq = clk_get_rate(s5kjn1->mclk);
-	if (freq != S5KJN1_MCLK_FREQ_24MHZ)
-		return dev_err_probe(s5kjn1->dev, -EINVAL,
-				     "MCLK clock frequency %lu is not supported\n",
-				     freq);
+	ret = s5kjn1_get_mclk_index(s5kjn1);
+	if (ret)
+		return ret;
 
 	ret = s5kjn1_check_hwcfg(s5kjn1);
 	if (ret)
