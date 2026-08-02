@@ -44,24 +44,22 @@
 #define TFA98XX_STATUS_FIRST		0x10
 #define TFA98XX_STATUS_LAST		0x1f
 
-#define TFA98XX_TDM_CFG0		0x20
-#define TFA98XX_TDM_CFG0_TDME		BIT(0)	/* enable interface */
-#define TFA98XX_TDM_CFG0_TDMSPKE	BIT(1)	/* enable audio sink */
-
-#define TFA98XX_TDM_CFG1		0x21
-#define TFA98XX_TDM_CFG1_NBCK_MSK	GENMASK(3, 0)	/* BCK to FS ratio */
-
-#define TFA98XX_TDM_CFG2		0x22
-#define TFA98XX_TDM_CFG2_SLLN_MSK	GENMASK(4, 0)	/* bits per slot */
-#define TFA98XX_TDM_CFG2_SSIZE_MSK	GENMASK(14, 10)	/* sample size */
-
-#define TFA98XX_TDM_CFG3		0x23
-#define TFA98XX_TDM_CFG3_SPKS_MSK	GENMASK(3, 0)	/* slot for sink 0 */
-
 #define TFA98XX_KEY1			0x0f
 #define TFA98XX_KEY1_UNHIDE		0x5a6b
 
+#define TFA9872_REVISION		0x72
 #define TFA9894_REVISION		0x94
+
+/* TDM interface fields, laid out differently per chip */
+enum {
+	F_TDME,		/* enable interface */
+	F_NBCK,		/* BCK to FS ratio */
+	F_SLLN,		/* bits per slot */
+	F_SSIZE,	/* sample size */
+	F_SPKE,		/* enable audio sink 0 */
+	F_SPKS,		/* slot for sink 0 */
+	F_NUM
+};
 
 struct tfa98xx_rev {
 	unsigned int rev;
@@ -71,18 +69,60 @@ struct tfa98xx_rev {
 
 struct tfa98xx_chip {
 	unsigned int id;
+	bool has_dsp;
 	const struct tfa98xx_rev *revs;
 	unsigned int num_revs;
+	struct reg_field fields[F_NUM];
 };
 
 struct tfa98xx {
 	struct regmap *regmap;
+	struct regmap_field *fields[F_NUM];
 };
 
 /*
  * Correction of the power-on defaults, taken verbatim from the vendor
  * driver. The values differ per die revision.
  */
+static const struct reg_sequence tfa9872_rev1a_init[] = {
+	{ 0x00, 0x1801 }, { 0x02, 0x2dc8 }, { 0x20, 0x0890 },
+	{ 0x22, 0x043c }, { 0x51, 0x0000 }, { 0x52, 0x1a1c },
+	{ 0x58, 0x161c }, { 0x61, 0x0198 }, { 0x65, 0x0a8b },
+	{ 0x70, 0x07f5 }, { 0x74, 0xcc84 }, { 0x82, 0x01ed },
+	{ 0x83, 0x0014 }, { 0x84, 0x0021 }, { 0x85, 0x0001 },
+};
+
+static const struct reg_sequence tfa9872_rev1b_init[] = {
+	{ 0x02, 0x2dc8 }, { 0x20, 0x0890 }, { 0x22, 0x043c },
+	{ 0x23, 0x0001 }, { 0x51, 0x0000 }, { 0x52, 0x5a1c },
+	{ 0x61, 0x0198 }, { 0x63, 0x0a9a }, { 0x65, 0x0a82 },
+	{ 0x6f, 0x01e3 }, { 0x70, 0x06fd }, { 0x71, 0x307e },
+	{ 0x74, 0xcc84 }, { 0x75, 0x1132 }, { 0x82, 0x01ed },
+	{ 0x83, 0x001a },
+};
+
+static const struct tfa98xx_rev tfa9872_revs[] = {
+	{ 0x1a72, tfa9872_rev1a_init, ARRAY_SIZE(tfa9872_rev1a_init) },
+	{ 0x2a72, tfa9872_rev1a_init, ARRAY_SIZE(tfa9872_rev1a_init) },
+	{ 0x1b72, tfa9872_rev1b_init, ARRAY_SIZE(tfa9872_rev1b_init) },
+	{ 0x2b72, tfa9872_rev1b_init, ARRAY_SIZE(tfa9872_rev1b_init) },
+	{ 0x3b72, tfa9872_rev1b_init, ARRAY_SIZE(tfa9872_rev1b_init) },
+};
+
+static const struct tfa98xx_chip tfa9872_chip = {
+	.id		= TFA9872_REVISION,
+	.revs		= tfa9872_revs,
+	.num_revs	= ARRAY_SIZE(tfa9872_revs),
+	.fields		= {
+		[F_TDME]	= REG_FIELD(0x20, 4, 4),
+		[F_NBCK]	= REG_FIELD(0x20, 12, 15),
+		[F_SLLN]	= REG_FIELD(0x21, 4, 8),
+		[F_SSIZE]	= REG_FIELD(0x22, 2, 6),
+		[F_SPKE]	= REG_FIELD(0x23, 0, 0),
+		[F_SPKS]	= REG_FIELD(0x26, 0, 3),
+	},
+};
+
 static const struct reg_sequence tfa9894_rev0a_init[] = {
 	{ 0x00, 0xa245 }, { 0x02, 0x51e8 }, { 0x52, 0xbe17 },
 	{ 0x57, 0x0344 }, { 0x61, 0x0033 }, { 0x71, 0x00cf },
@@ -115,8 +155,17 @@ static const struct tfa98xx_rev tfa9894_revs[] = {
 
 static const struct tfa98xx_chip tfa9894_chip = {
 	.id		= TFA9894_REVISION,
+	.has_dsp	= true,
 	.revs		= tfa9894_revs,
 	.num_revs	= ARRAY_SIZE(tfa9894_revs),
+	.fields		= {
+		[F_TDME]	= REG_FIELD(0x20, 0, 0),
+		[F_SPKE]	= REG_FIELD(0x20, 1, 1),
+		[F_NBCK]	= REG_FIELD(0x21, 0, 3),
+		[F_SLLN]	= REG_FIELD(0x22, 0, 4),
+		[F_SSIZE]	= REG_FIELD(0x22, 10, 14),
+		[F_SPKS]	= REG_FIELD(0x23, 0, 3),
+	},
 };
 
 static bool tfa98xx_volatile_reg(struct device *dev, unsigned int reg)
@@ -185,6 +234,7 @@ static int tfa98xx_hw_params(struct snd_pcm_substream *substream,
 			     struct snd_soc_dai *dai)
 {
 	struct snd_soc_component *component = dai->component;
+	struct tfa98xx *tfa98xx = snd_soc_component_get_drvdata(component);
 	unsigned int nbck, slotlen, samplesize;
 	int sr, ret;
 
@@ -217,28 +267,23 @@ static int tfa98xx_hw_params(struct snd_pcm_substream *substream,
 		return ret;
 
 	/* The interface must be disabled while its framing is reprogrammed */
-	ret = snd_soc_component_update_bits(component, TFA98XX_TDM_CFG0,
-					    TFA98XX_TDM_CFG0_TDME, 0);
-	if (ret < 0)
+	ret = regmap_field_write(tfa98xx->fields[F_TDME], 0);
+	if (ret)
 		return ret;
 
-	ret = snd_soc_component_update_bits(component, TFA98XX_TDM_CFG1,
-					    TFA98XX_TDM_CFG1_NBCK_MSK,
-					    FIELD_PREP(TFA98XX_TDM_CFG1_NBCK_MSK, nbck));
-	if (ret < 0)
+	ret = regmap_field_write(tfa98xx->fields[F_NBCK], nbck);
+	if (ret)
 		return ret;
 
-	ret = snd_soc_component_update_bits(component, TFA98XX_TDM_CFG2,
-					    TFA98XX_TDM_CFG2_SLLN_MSK |
-					    TFA98XX_TDM_CFG2_SSIZE_MSK,
-					    FIELD_PREP(TFA98XX_TDM_CFG2_SLLN_MSK, slotlen) |
-					    FIELD_PREP(TFA98XX_TDM_CFG2_SSIZE_MSK, samplesize));
-	if (ret < 0)
+	ret = regmap_field_write(tfa98xx->fields[F_SLLN], slotlen);
+	if (ret)
 		return ret;
 
-	return snd_soc_component_update_bits(component, TFA98XX_TDM_CFG0,
-					    TFA98XX_TDM_CFG0_TDME,
-					    TFA98XX_TDM_CFG0_TDME);
+	ret = regmap_field_write(tfa98xx->fields[F_SSIZE], samplesize);
+	if (ret)
+		return ret;
+
+	return regmap_field_write(tfa98xx->fields[F_TDME], 1);
 }
 
 static int tfa98xx_set_fmt(struct snd_soc_dai *dai, unsigned int fmt)
@@ -278,8 +323,11 @@ static struct snd_soc_dai_driver tfa98xx_dai = {
 	.ops = &tfa98xx_dai_ops,
 };
 
-static int tfa98xx_init(struct regmap *regmap, const struct tfa98xx_rev *rev)
+static int tfa98xx_init(struct tfa98xx *tfa98xx,
+			const struct tfa98xx_chip *chip,
+			const struct tfa98xx_rev *rev)
 {
+	struct regmap *regmap = tfa98xx->regmap;
 	int ret;
 
 	/* The correction sequences touch registers behind the hide key */
@@ -295,23 +343,26 @@ static int tfa98xx_init(struct regmap *regmap, const struct tfa98xx_rev *rev)
 	if (ret)
 		return ret;
 
-	/*
-	 * Bypass the CoolFlux DSP: without the vendor firmware container it has
-	 * nothing to run. AMPC hands control over the amplifier to the DSP and
-	 * is set out of reset, so it has to be cleared as well - otherwise AMPE
-	 * has no effect and the amplifier stays silent.
-	 */
-	ret = regmap_clear_bits(regmap, TFA98XX_SYS_CTRL0,
-				BIT(TFA98XX_SYS_CTRL0_CFE) |
-				BIT(TFA98XX_SYS_CTRL0_AMPC));
-	if (ret)
-		return ret;
+	if (chip->has_dsp) {
+		/*
+		 * Bypass the CoolFlux DSP: without the vendor firmware
+		 * container it has nothing to run. AMPC hands control over the
+		 * amplifier to the DSP and is set out of reset, so it has to
+		 * be cleared as well - otherwise AMPE has no effect and the
+		 * amplifier stays silent.
+		 */
+		ret = regmap_clear_bits(regmap, TFA98XX_SYS_CTRL0,
+					BIT(TFA98XX_SYS_CTRL0_CFE) |
+					BIT(TFA98XX_SYS_CTRL0_AMPC));
+		if (ret)
+			return ret;
 
-	/* Take the amplifier input straight from the TDM interface */
-	ret = regmap_update_bits(regmap, TFA98XX_SYS_CTRL1,
-				 TFA98XX_SYS_CTRL1_AMPINSEL_MSK, 0);
-	if (ret)
-		return ret;
+		/* Take the amplifier input straight from the TDM interface */
+		ret = regmap_update_bits(regmap, TFA98XX_SYS_CTRL1,
+					 TFA98XX_SYS_CTRL1_AMPINSEL_MSK, 0);
+		if (ret)
+			return ret;
+	}
 
 	/*
 	 * Tell the hardware manager that the I2C configuration is complete,
@@ -324,14 +375,11 @@ static int tfa98xx_init(struct regmap *regmap, const struct tfa98xx_rev *rev)
 		return ret;
 
 	/* Route slot 0 of the TDM frame into the amplifier */
-	ret = regmap_update_bits(regmap, TFA98XX_TDM_CFG3,
-				 TFA98XX_TDM_CFG3_SPKS_MSK,
-				 FIELD_PREP(TFA98XX_TDM_CFG3_SPKS_MSK, 0));
+	ret = regmap_field_write(tfa98xx->fields[F_SPKS], 0);
 	if (ret)
 		return ret;
 
-	return regmap_set_bits(regmap, TFA98XX_TDM_CFG0,
-			       TFA98XX_TDM_CFG0_TDMSPKE);
+	return regmap_field_write(tfa98xx->fields[F_SPKE], 1);
 }
 
 static int tfa98xx_i2c_probe(struct i2c_client *i2c)
@@ -355,6 +403,12 @@ static int tfa98xx_i2c_probe(struct i2c_client *i2c)
 	if (IS_ERR(tfa98xx->regmap))
 		return dev_err_probe(dev, PTR_ERR(tfa98xx->regmap),
 				     "Failed to initialize regmap\n");
+
+	ret = devm_regmap_field_bulk_alloc(dev, tfa98xx->regmap,
+					   tfa98xx->fields, chip->fields,
+					   F_NUM);
+	if (ret)
+		return ret;
 
 	i2c_set_clientdata(i2c, tfa98xx);
 
@@ -386,7 +440,7 @@ static int tfa98xx_i2c_probe(struct i2c_client *i2c)
 		return dev_err_probe(dev, -ENODEV,
 				     "Unsupported die revision 0x%04x\n", rev);
 
-	ret = tfa98xx_init(tfa98xx->regmap, &chip->revs[i]);
+	ret = tfa98xx_init(tfa98xx, chip, &chip->revs[i]);
 	if (ret)
 		return dev_err_probe(dev, ret, "Failed to initialize device\n");
 
@@ -395,12 +449,14 @@ static int tfa98xx_i2c_probe(struct i2c_client *i2c)
 }
 
 static const struct i2c_device_id tfa98xx_i2c_id[] = {
+	{ "tfa9872", (kernel_ulong_t)&tfa9872_chip },
 	{ "tfa9894", (kernel_ulong_t)&tfa9894_chip },
 	{ }
 };
 MODULE_DEVICE_TABLE(i2c, tfa98xx_i2c_id);
 
 static const struct of_device_id tfa98xx_of_match[] = {
+	{ .compatible = "nxp,tfa9872", .data = &tfa9872_chip },
 	{ .compatible = "nxp,tfa9894", .data = &tfa9894_chip },
 	{ }
 };
