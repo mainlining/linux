@@ -23,6 +23,7 @@
 #include <linux/regmap.h>
 #include <sound/pcm_params.h>
 #include <sound/soc.h>
+#include <sound/tlv.h>
 
 #define TFA98XX_SYS_CTRL0		0x00
 #define TFA98XX_SYS_CTRL0_PWDN		0	/* power down */
@@ -73,11 +74,51 @@ struct tfa98xx_chip {
 	const struct tfa98xx_rev *revs;
 	unsigned int num_revs;
 	struct reg_field fields[F_NUM];
+	const struct snd_kcontrol_new *controls;
+	unsigned int num_controls;
 };
 
 struct tfa98xx {
 	struct regmap *regmap;
+	const struct tfa98xx_chip *chip;
 	struct regmap_field *fields[F_NUM];
+};
+
+/* TDMSPKG, the TDM to amplifier gain: 6 dB + 1 dB per step */
+static const DECLARE_TLV_DB_SCALE(tfa98xx_spkg_tlv, 600, 100, 0);
+
+static int tfa98xx_spkg_put(struct snd_kcontrol *kcontrol,
+			    struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
+	int ret, err;
+
+	/* The gain register is behind the hide key */
+	ret = snd_soc_component_write(component, TFA98XX_KEY1,
+				      TFA98XX_KEY1_UNHIDE);
+	if (ret < 0)
+		return ret;
+
+	ret = snd_soc_put_volsw(kcontrol, ucontrol);
+
+	err = snd_soc_component_write(component, TFA98XX_KEY1, 0);
+	if (err < 0)
+		return err;
+
+	return ret;
+}
+
+#define TFA98XX_SPKG(reg, shift) \
+	SOC_SINGLE_EXT_TLV("Speaker Driver Playback Volume", reg, shift, \
+			   15, 0, snd_soc_get_volsw, tfa98xx_spkg_put, \
+			   tfa98xx_spkg_tlv)
+
+static const struct snd_kcontrol_new tfa9872_controls[] = {
+	TFA98XX_SPKG(0x61, 6),
+};
+
+static const struct snd_kcontrol_new tfa9894_controls[] = {
+	TFA98XX_SPKG(0x57, 4),
 };
 
 /*
@@ -113,6 +154,8 @@ static const struct tfa98xx_chip tfa9872_chip = {
 	.id		= TFA9872_REVISION,
 	.revs		= tfa9872_revs,
 	.num_revs	= ARRAY_SIZE(tfa9872_revs),
+	.controls	= tfa9872_controls,
+	.num_controls	= ARRAY_SIZE(tfa9872_controls),
 	.fields		= {
 		[F_TDME]	= REG_FIELD(0x20, 4, 4),
 		[F_NBCK]	= REG_FIELD(0x20, 12, 15),
@@ -158,6 +201,8 @@ static const struct tfa98xx_chip tfa9894_chip = {
 	.has_dsp	= true,
 	.revs		= tfa9894_revs,
 	.num_revs	= ARRAY_SIZE(tfa9894_revs),
+	.controls	= tfa9894_controls,
+	.num_controls	= ARRAY_SIZE(tfa9894_controls),
 	.fields		= {
 		[F_TDME]	= REG_FIELD(0x20, 0, 0),
 		[F_SPKE]	= REG_FIELD(0x20, 1, 1),
@@ -204,7 +249,17 @@ static const struct snd_soc_dapm_route tfa98xx_dapm_routes[] = {
 	{ "AMPE", NULL, "AIFIN" },
 };
 
+static int tfa98xx_component_probe(struct snd_soc_component *component)
+{
+	struct tfa98xx *tfa98xx = snd_soc_component_get_drvdata(component);
+
+	return snd_soc_add_component_controls(component,
+					      tfa98xx->chip->controls,
+					      tfa98xx->chip->num_controls);
+}
+
 static const struct snd_soc_component_driver tfa98xx_component = {
+	.probe			= tfa98xx_component_probe,
 	.dapm_widgets		= tfa98xx_dapm_widgets,
 	.num_dapm_widgets	= ARRAY_SIZE(tfa98xx_dapm_widgets),
 	.dapm_routes		= tfa98xx_dapm_routes,
@@ -398,6 +453,8 @@ static int tfa98xx_i2c_probe(struct i2c_client *i2c)
 	tfa98xx = devm_kzalloc(dev, sizeof(*tfa98xx), GFP_KERNEL);
 	if (!tfa98xx)
 		return -ENOMEM;
+
+	tfa98xx->chip = chip;
 
 	tfa98xx->regmap = devm_regmap_init_i2c(i2c, &tfa98xx_regmap);
 	if (IS_ERR(tfa98xx->regmap))
