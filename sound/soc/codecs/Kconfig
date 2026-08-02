@@ -2319,7 +2319,7 @@ config SND_SOC_TFA98XX
 	select REGMAP_I2C
 	help
 	  Enable support for NXP (now Goodix) TFA98XX (TFA2 family) smart
-	  speaker amplifiers, e.g. TFA9894.
+	  speaker amplifiers, e.g. TFA9872 and TFA9894.
 	  Note that the driver bypasses the built-in "CoolFlux DSP" and
 	  therefore provides no speaker protection or volume control.
 
