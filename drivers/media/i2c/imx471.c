@@ -10,6 +10,7 @@
 #include <linux/delay.h>
 #include <linux/i2c.h>
 #include <linux/module.h>
+#include <linux/of.h>
 #include <linux/pm_runtime.h>
 #include <linux/regulator/consumer.h>
 #include <media/v4l2-cci.h>
@@ -941,10 +942,17 @@ static const struct acpi_device_id imx471_acpi_ids[] __maybe_unused = {
 };
 MODULE_DEVICE_TABLE(acpi, imx471_acpi_ids);
 
+static const struct of_device_id imx471_of_match[] = {
+	{ .compatible = "sony,imx471" },
+	{ /* sentinel */ }
+};
+MODULE_DEVICE_TABLE(of, imx471_of_match);
+
 static struct i2c_driver imx471_i2c_driver = {
 	.driver = {
 		.name = "imx471",
 		.acpi_match_table = ACPI_PTR(imx471_acpi_ids),
+		.of_match_table = imx471_of_match,
 		.pm = pm_sleep_ptr(&imx471_pm_ops),
 	},
 	.probe = imx471_probe,
