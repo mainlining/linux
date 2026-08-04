@@ -839,6 +839,14 @@
 	status = "okay";
 
 	ports {
+		port@0 {
+			csiphy0_ep: endpoint {
+				data-lanes = <0 1 2 3>;
+				bus-type = <MEDIA_BUS_TYPE_CSI2_DPHY>;
+				remote-endpoint = <&camera_imx471_ep>;
+			};
+		};
+
 		port@2 {
 			csiphy2_ep: endpoint {
 				data-lanes = <0 1 2 3>;
@@ -861,7 +869,33 @@
 };
 
 &cci0_i2c0 {
-	/* D-PHY sony,imx471 (Front) @ 0x1a */
+	camf_imx471: camera@1a {
+		compatible = "sony,imx471";
+		reg = <0x1a>;
+
+		vana-supply = <&vreg_camf_vana_2p8>;
+		vdig-supply = <&vreg_camf_vdig_1p1>;
+		vif-supply = <&vreg_cam_vio_1p8>;
+
+		clocks = <&camcc CAM_CC_MCLK0_CLK>;
+		assigned-clocks = <&camcc CAM_CC_MCLK0_CLK>;
+		assigned-clock-rates = <19200000>;
+
+		reset-gpios = <&tlmm 20 GPIO_ACTIVE_LOW>;
+		pinctrl-0 = <&cam_mclk0_default>;
+		pinctrl-names = "default";
+
+		orientation = <0>; /* Front facing */
+		rotation = <270>;
+
+		port {
+			camera_imx471_ep: endpoint {
+				data-lanes = <1 2 3 4>;
+				link-frequencies = /bits/ 64 <200000000>;
+				remote-endpoint = <&csiphy0_ep>;
+			};
+		};
+	};
 
 	camf_p24c64f: eeprom@52 {
 		compatible = "puya,p24c64f",
