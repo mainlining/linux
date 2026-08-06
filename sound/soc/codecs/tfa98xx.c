@@ -83,6 +83,7 @@ struct tfa98xx {
 	struct regmap *regmap;
 	const struct tfa98xx_chip *chip;
 	struct regmap_field *fields[F_NUM];
+	u32 channel_index;
 };
 
 /* TDMSPKG, the TDM to amplifier gain: 6 dB + 1 dB per step */
@@ -474,8 +475,8 @@ static int tfa98xx_init(struct tfa98xx *tfa98xx,
 	if (ret)
 		return ret;
 
-	/* Route slot 0 of the TDM frame into the amplifier */
-	ret = regmap_field_write(tfa98xx->fields[F_SPKS], 0);
+	/* Route slot taken from device tree of the TDM frame into the amplifier */
+	ret = regmap_field_write(tfa98xx->fields[F_SPKS], tfa98xx->channel_index);
 	if (ret)
 		return ret;
 
@@ -541,6 +542,9 @@ static int tfa98xx_i2c_probe(struct i2c_client *i2c)
 	if (i == chip->num_revs)
 		return dev_err_probe(dev, -ENODEV,
 				     "Unsupported die revision 0x%04x\n", rev);
+
+	if (!of_property_read_u32(dev->of_node, "sound-channel", &tfa98xx->channel_index))
+		tfa98xx->channel_index = 0;
 
 	ret = tfa98xx_init(tfa98xx, chip, &chip->revs[i]);
 	if (ret)
