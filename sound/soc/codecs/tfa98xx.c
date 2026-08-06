@@ -59,6 +59,9 @@ enum {
 	F_SLLN,		/* bits per slot */
 	F_SSIZE,	/* sample size */
 	F_SPKE,		/* enable audio sink 0 */
+	F_DCE,		/* control audio TDM channel in 1 */
+	F_CSE,		/* current sense vbat temperature and vddp feedback */
+	F_VSE,		/* voltage sense vbat temperature and vddp feedback */
 	F_SPKS,		/* slot for sink 0 */
 	F_NUM
 };
@@ -83,6 +86,7 @@ struct tfa98xx {
 	struct regmap *regmap;
 	const struct tfa98xx_chip *chip;
 	struct regmap_field *fields[F_NUM];
+	u32 channel_index;
 };
 
 /* TDMSPKG, the TDM to amplifier gain: 6 dB + 1 dB per step */
@@ -167,6 +171,9 @@ static const struct tfa98xx_chip tfa9872_chip = {
 		[F_SLLN]	= REG_FIELD(0x21, 4, 8),
 		[F_SSIZE]	= REG_FIELD(0x22, 2, 6),
 		[F_SPKE]	= REG_FIELD(0x23, 0, 0),
+		[F_DCE]		= REG_FIELD(0x23, 1, 1),
+		[F_CSE]		= REG_FIELD(0x23, 3, 3),
+		[F_VSE]		= REG_FIELD(0x23, 4, 4),
 		[F_SPKS]	= REG_FIELD(0x26, 0, 3),
 	},
 };
@@ -207,6 +214,9 @@ static const struct tfa98xx_chip tfa9873_chip = {
 		[F_SLLN]	= REG_FIELD(0x21, 4, 8),
 		[F_SSIZE]	= REG_FIELD(0x22, 2, 6),
 		[F_SPKE]	= REG_FIELD(0x23, 0, 0),
+		[F_DCE]		= REG_FIELD(0x23, 1, 1),
+		[F_CSE]		= REG_FIELD(0x23, 3, 3),
+		[F_VSE]		= REG_FIELD(0x23, 4, 4),
 		[F_SPKS]	= REG_FIELD(0x26, 0, 3),
 	},
 };
@@ -251,6 +261,9 @@ static const struct tfa98xx_chip tfa9894_chip = {
 	.fields		= {
 		[F_TDME]	= REG_FIELD(0x20, 0, 0),
 		[F_SPKE]	= REG_FIELD(0x20, 1, 1),
+		[F_DCE]		= REG_FIELD(0x20, 2, 2),
+		[F_CSE]		= REG_FIELD(0x20, 3, 3),
+		[F_VSE]		= REG_FIELD(0x20, 3, 3),
 		[F_NBCK]	= REG_FIELD(0x21, 0, 3),
 		[F_SLLN]	= REG_FIELD(0x22, 0, 4),
 		[F_SSIZE]	= REG_FIELD(0x22, 10, 14),
@@ -464,22 +477,34 @@ static int tfa98xx_init(struct tfa98xx *tfa98xx,
 			return ret;
 	}
 
+	ret = regmap_field_write(tfa98xx->fields[F_SPKE], 1);
+	if (ret)
+		return ret;
+
+	ret = regmap_field_write(tfa98xx->fields[F_DCE], 0);
+	if (ret)
+		return ret;
+
+	ret = regmap_field_write(tfa98xx->fields[F_CSE], 0);
+	if (ret)
+		return ret;
+
+	ret = regmap_field_write(tfa98xx->fields[F_VSE], 0);
+	if (ret)
+		return ret;
+
+	/* Route slot taken from device tree of the TDM frame into the amplifier */
+	ret = regmap_field_write(tfa98xx->fields[F_SPKS], tfa98xx->channel_index);
+	if (ret)
+		return ret;
+
 	/*
 	 * Tell the hardware manager that the I2C configuration is complete,
 	 * otherwise it never leaves the wait-for-settings state. The amplifier
 	 * stays powered down until DAPM clears PWDN.
 	 */
-	ret = regmap_set_bits(regmap, TFA98XX_SYS_CTRL1,
+	return regmap_set_bits(regmap, TFA98XX_SYS_CTRL1,
 			      TFA98XX_SYS_CTRL1_MANSCONF);
-	if (ret)
-		return ret;
-
-	/* Route slot 0 of the TDM frame into the amplifier */
-	ret = regmap_field_write(tfa98xx->fields[F_SPKS], 0);
-	if (ret)
-		return ret;
-
-	return regmap_field_write(tfa98xx->fields[F_SPKE], 1);
 }
 
 static int tfa98xx_i2c_probe(struct i2c_client *i2c)
@@ -541,6 +566,9 @@ static int tfa98xx_i2c_probe(struct i2c_client *i2c)
 	if (i == chip->num_revs)
 		return dev_err_probe(dev, -ENODEV,
 				     "Unsupported die revision 0x%04x\n", rev);
+
+	if (of_property_read_u32(dev->of_node, "sound-channel", &tfa98xx->channel_index))
+		tfa98xx->channel_index = 0;
 
 	ret = tfa98xx_init(tfa98xx, chip, &chip->revs[i]);
 	if (ret)
