@@ -49,6 +49,7 @@
 #define TFA98XX_KEY1_UNHIDE		0x5a6b
 
 #define TFA9872_REVISION		0x72
+#define TFA9873_REVISION		0x73
 #define TFA9894_REVISION		0x94
 
 /* TDM interface fields, laid out differently per chip */
@@ -117,6 +118,10 @@ static const struct snd_kcontrol_new tfa9872_controls[] = {
 	TFA98XX_SPKG(0x61, 6),
 };
 
+static const struct snd_kcontrol_new tfa9873_controls[] = {
+	TFA98XX_SPKG(0x5f, 6),
+};
+
 static const struct snd_kcontrol_new tfa9894_controls[] = {
 	TFA98XX_SPKG(0x57, 4),
 };
@@ -158,6 +163,46 @@ static const struct tfa98xx_chip tfa9872_chip = {
 	.num_controls	= ARRAY_SIZE(tfa9872_controls),
 	.fields		= {
 		[F_TDME]	= REG_FIELD(0x20, 4, 4),
+		[F_NBCK]	= REG_FIELD(0x20, 12, 15),
+		[F_SLLN]	= REG_FIELD(0x21, 4, 8),
+		[F_SSIZE]	= REG_FIELD(0x22, 2, 6),
+		[F_SPKE]	= REG_FIELD(0x23, 0, 0),
+		[F_SPKS]	= REG_FIELD(0x26, 0, 3),
+	},
+};
+
+
+static const struct reg_sequence tfa9873_rev0a_init[] = {
+	{ 0x02, 0x0628 }, { 0x4c, 0x00e9 }, { 0x52, 0x17d0 },
+	{ 0x56, 0x0011 }, { 0x58, 0x0200 }, { 0x59, 0x0001 },
+	{ 0x5f, 0x0180 }, { 0x61, 0x0183 }, { 0x63, 0x055a },
+	{ 0x65, 0x0542 }, { 0x6f, 0x00a3 }, { 0x70, 0xa3fb },
+	{ 0x71, 0x007e }, { 0x83, 0x009a }, { 0x84, 0x0211 },
+	{ 0x85, 0x0382 }, { 0x8c, 0x0210 }, { 0xd5, 0x0000 },
+};
+
+static const struct reg_sequence tfa9873_rev0b_init[] = {
+	{ 0x02, 0x0628 }, { 0x61, 0x0183 }, { 0x63, 0x005a },
+	{ 0x6f, 0x0082 }, { 0x70, 0xa3eb }, { 0x73, 0x0187 },
+	{ 0x83, 0x071c }, { 0x85, 0x0380 }, { 0xd5, 0x004d },
+};
+
+static const struct reg_sequence tfa9873_rev1a_init[] = {};
+
+static const struct tfa98xx_rev tfa9873_revs[] = {
+	{ 0x0a73, tfa9873_rev0a_init, ARRAY_SIZE(tfa9873_rev0a_init) },
+	{ 0x0b73, tfa9873_rev0b_init, ARRAY_SIZE(tfa9873_rev0b_init) },
+	{ 0x1a73, tfa9873_rev1a_init, ARRAY_SIZE(tfa9873_rev1a_init) },
+};
+
+static const struct tfa98xx_chip tfa9873_chip = {
+	.id		= TFA9873_REVISION,
+	.revs		= tfa9873_revs,
+	.num_revs	= ARRAY_SIZE(tfa9873_revs),
+	.controls	= tfa9873_controls,
+	.num_controls	= ARRAY_SIZE(tfa9873_controls),
+	.fields		= {
+		[F_TDME]	= REG_FIELD(0x20, 0, 0),
 		[F_NBCK]	= REG_FIELD(0x20, 12, 15),
 		[F_SLLN]	= REG_FIELD(0x21, 4, 8),
 		[F_SSIZE]	= REG_FIELD(0x22, 2, 6),
@@ -507,6 +552,7 @@ static int tfa98xx_i2c_probe(struct i2c_client *i2c)
 
 static const struct i2c_device_id tfa98xx_i2c_id[] = {
 	{ "tfa9872", (kernel_ulong_t)&tfa9872_chip },
+	{ "tfa9873", (kernel_ulong_t)&tfa9873_chip },
 	{ "tfa9894", (kernel_ulong_t)&tfa9894_chip },
 	{ }
 };
@@ -514,6 +560,7 @@ MODULE_DEVICE_TABLE(i2c, tfa98xx_i2c_id);
 
 static const struct of_device_id tfa98xx_of_match[] = {
 	{ .compatible = "nxp,tfa9872", .data = &tfa9872_chip },
+	{ .compatible = "nxp,tfa9873", .data = &tfa9873_chip },
 	{ .compatible = "nxp,tfa9894", .data = &tfa9894_chip },
 	{ }
 };
