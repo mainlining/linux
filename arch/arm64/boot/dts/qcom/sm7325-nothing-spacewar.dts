@@ -1194,28 +1194,24 @@
 	clock-frequency = <100000>;
 	status = "okay";
 
-	tfa9873_l: codec@34 { /* EAR */
-		compatible = "nxp,tfa9873",
-			     "nxp,tfa9872";
+	tfa9873_l: audio-codec@34 { /* EAR */
+		compatible = "nxp,tfa9873";
 		reg = <0x34>;
 		reset-gpio = <&tlmm 101 GPIO_ACTIVE_HIGH>;
-
 		sound-channel = <0>;
 		sound-name-prefix = "Speaker Top";
 
-		#sound-dai-cells = <1>;
+		#sound-dai-cells = <0>;
 	};
 
-	tfa9873_r: codec@35 { /* SPK */
-		compatible = "nxp,tfa9873",
-			     "nxp,tfa9872";
+	tfa9873_r: audio-codec@35 { /* SPK */
+		compatible = "nxp,tfa9873";
 		reg = <0x35>;
 		reset-gpio = <&tlmm 101 GPIO_ACTIVE_HIGH>;
-
 		sound-channel = <1>;
 		sound-name-prefix = "Speaker Bottom";
 
-		#sound-dai-cells = <1>;
+		#sound-dai-cells = <0>;
 	};
 };
 
@@ -1637,8 +1633,8 @@
 
 	audio-routing = "IN1_HPHL", "HPHL_OUT",
 			"IN2_HPHR", "HPHR_OUT",
-			"Speaker Top", "Speaker Top Speaker",
-			"Speaker Bottom", "Speaker Bottom Speaker",
+			"Speaker Top", "Speaker Top OUT",
+			"Speaker Bottom", "Speaker Bottom OUT",
 			"AMIC1", "MIC BIAS1",
 			"AMIC2", "MIC BIAS2",
 			"AMIC3", "MIC BIAS3",
@@ -1717,7 +1713,7 @@
 		};
 
 		codec {
-			sound-dai = <&tfa9873_l 0>, <&tfa9873_r 0>;
+			sound-dai = <&tfa9873_l>, <&tfa9873_r>;
 		};
 	};
 
