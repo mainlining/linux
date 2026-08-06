@@ -20,6 +20,7 @@ properties:
   compatible:
     enum:
       - nxp,tfa9872
+      - nxp,tfa9873
       - nxp,tfa9894
 
   reg:
