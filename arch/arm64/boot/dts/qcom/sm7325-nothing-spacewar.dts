@@ -1031,21 +1031,21 @@
 	status = "okay";
 
 	tfa9873_l: codec@34 { /* EAR */
-		compatible = "nxp,tfa9873",
-			     "nxp,tfa9872";
+		compatible = "nxp,tfa9873";
 		reg = <0x34>;
 		reset-gpio = <&tlmm 101 GPIO_ACTIVE_HIGH>;
+		sound-channel = <1>;
 
-		#sound-dai-cells = <1>;
+		#sound-dai-cells = <0>;
 	};
 
 	tfa9873_r: codec@35 { /* SPK */
-		compatible = "nxp,tfa9873",
-			     "nxp,tfa9872";
+		compatible = "nxp,tfa9873";
 		reg = <0x35>;
 		reset-gpio = <&tlmm 101 GPIO_ACTIVE_HIGH>;
+		sound-channel = <0>;
 
-		#sound-dai-cells = <1>;
+		#sound-dai-cells = <0>;
 	};
 };
 
@@ -1425,7 +1425,7 @@
 		};
 
 		codec {
-			sound-dai = <&tfa9873_l 0>, <&tfa9873_r 0>;
+			sound-dai = <&tfa9873_l>, <&tfa9873_r>;
 		};
 	};
 };
