@@ -359,6 +359,19 @@
 		vin-supply = <&vreg_bob>;
 	};
 
+	vreg_camw_vana2_2p8: regulator-camw-vana2 {
+		compatible = "regulator-fixed";
+		regulator-name = "vreg_camw_vana2_2p8";
+
+		regulator-min-microvolt = <2800000>;
+		regulator-max-microvolt = <2800000>;
+
+		gpio = <&tlmm 107 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+
+		vin-supply = <&vreg_bob>;
+	};
+
 	vreg_camw_vdig_1p1: regulator-camw-vdig {
 		compatible = "regulator-fixed";
 		regulator-name = "vreg_camw_vdig_1p1";
@@ -884,6 +897,14 @@
 				remote-endpoint = <&camera_s5kjn1_ep>;
 			};
 		};
+
+		port@3 {
+			csiphy3_ep: endpoint {
+				data-lanes = <0 1 2>;
+				bus-type = <MEDIA_BUS_TYPE_CSI2_CPHY>;
+				remote-endpoint = <&camera_imx766_ep>;
+			};
+		};
 	};
 };
 
@@ -990,7 +1011,38 @@
 
 &cci1_i2c1 {
 	/* actuator (For Wide sensor) @ 0xc */
-	/* C-PHY sony,imx766 (Wide) @ 0x10 */
+
+	camera@10 {
+		compatible = "sony,imx766";
+		reg = <0x10>;
+
+		vana1-supply = <&vreg_camw_vana_2p8>;
+		vana2-supply = <&vreg_camw_vana2_2p8>;
+		vdig-supply = <&vreg_camw_vdig_1p1>;
+		vif-supply = <&vreg_cam_vio_1p8>;
+
+		clocks = <&camcc CAM_CC_MCLK3_CLK>;
+		assigned-clocks = <&camcc CAM_CC_MCLK3_CLK>;
+		assigned-clock-rates = <19200000>;
+
+		pwrn-gpios = <&tlmm 72 GPIO_ACTIVE_LOW>;
+		reset-gpios = <&tlmm 78 GPIO_ACTIVE_LOW>;
+
+		pinctrl-0 = <&cam_mclk3_default>;
+		pinctrl-names = "default";
+
+		orientation = <1>; // Rear facing
+		rotation = <90>;
+
+		port {
+			camera_imx766_ep: endpoint {
+				data-lanes = <1 2 3>;
+				bus-type = <MEDIA_BUS_TYPE_CSI2_CPHY>;
+				link-frequencies = /bits/ 64 <269000000 1044000000 1076000000>;
+				remote-endpoint = <&csiphy3_ep>;
+			};
+		};
+	};
 
 	camw_gt24p128e: eeprom@50 {
 		compatible = "giantec,gt24p128e",
