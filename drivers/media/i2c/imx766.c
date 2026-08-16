@@ -534,16 +534,19 @@ static const struct cci_reg_sequence imx766_4096x3072_regs[] = {
 };
 
 static const struct cci_reg_sequence imx766_8192x6144_regs[] = {
+	/* ROI Setting */
 	{ IMX766_REG_X_ADD_STA, 0x0000 },
 	{ IMX766_REG_Y_ADD_STA, 0x0000 },
 	{ IMX766_REG_X_ADD_END, 0x1fff },
 	{ IMX766_REG_Y_ADD_END, 0x17ff },
+	/* Mode Setting */
 	{ IMX766_REG_BINNING_MODE, 0x00 },
 	{ IMX766_REG_BINNING_TYPE, 0x11 },
 	{ IMX766_REG_BINNING_WEIGHTING, 0x0a },
 	{ IMX766_REG_QBC_2X2OCL_MODE, 0x00 },
 	{ IMX766_REG_ADC_MODE, 0x00 },
 	{ IMX766_REG_RST_SHORT_EN, 0x01 },
+	/* Digital Crop & Scaling */
 	{ IMX766_REG_BINNING_PRIORITY_H, 0x00 },
 	{ IMX766_REG_BINNING_PRIORITY_V, 0x00 },
 	{ IMX766_REG_QBC_RMSC_EN, 0x01 },
@@ -556,6 +559,7 @@ static const struct cci_reg_sequence imx766_8192x6144_regs[] = {
 	{ IMX766_REG_IVT_PXCK_DIV, 0x05 },
 	{ IMX766_REG_IVT_SYCK_DIV, 0x04 },
 	{ IMX766_REG_IOP_SYCK_DIV, 0x01 },
+	/* Other Setting */
 	{ CCI_REG8(0x30cb), 0x00 },
 	{ CCI_REG8(0x30cc), 0x10 },
 	{ CCI_REG8(0x30cd), 0x00 },
@@ -586,10 +590,12 @@ static const struct cci_reg_sequence imx766_8192x6144_regs[] = {
 };
 
 static const struct cci_reg_sequence imx766_7424x5568_regs[] = {
+	/* ROI Setting */
 	{ IMX766_REG_X_ADD_STA, 0x0000 },
 	{ IMX766_REG_Y_ADD_STA, 0x0120 },
 	{ IMX766_REG_X_ADD_END, 0x1fff },
 	{ IMX766_REG_Y_ADD_END, 0x16df },
+	/* Mode Setting */
 	{ IMX766_REG_BINNING_MODE, 0x00 },
 	{ IMX766_REG_BINNING_TYPE, 0x11 },
 	{ IMX766_REG_BINNING_WEIGHTING, 0x0a },
@@ -599,6 +605,7 @@ static const struct cci_reg_sequence imx766_7424x5568_regs[] = {
 	{ IMX766_REG_BINNING_PRIORITY_H, 0x00 },
 	{ IMX766_REG_BINNING_PRIORITY_V, 0x00 },
 	{ IMX766_REG_QBC_RMSC_EN, 0x01 },
+	/* Digital Crop & Scaling */
 	{ IMX766_REG_DIG_CROP_X_OFFSET, 0x0180 },
 	{ IMX766_REG_DIG_CROP_Y_OFFSET, 0x0000 },
 	{ IMX766_REG_DIG_CROP_IMAGE_WIDTH, 0x1d00 },
@@ -608,6 +615,7 @@ static const struct cci_reg_sequence imx766_7424x5568_regs[] = {
 	{ IMX766_REG_IVT_PXCK_DIV, 0x05 },
 	{ IMX766_REG_IVT_SYCK_DIV, 0x04 },
 	{ IMX766_REG_IOP_SYCK_DIV, 0x02 },
+	/* Other Setting */
 	{ CCI_REG8(0x30cb), 0x00 },
 	{ CCI_REG8(0x30cc), 0x10 },
 	{ CCI_REG8(0x30cd), 0x00 },
@@ -632,6 +640,7 @@ static const struct cci_reg_sequence imx766_7424x5568_regs[] = {
 	{ CCI_REG8(0x4cf9), 0x9e },
 	{ CCI_REG8(0x4db8), 0x08 },
 	{ CCI_REG8(0x4db9), 0x98 },
+	/* Integration Setting */
 	{ CCI_REG8(0x3803), 0x01 },
 	{ CCI_REG8(0x3804), 0x16 },
 	{ CCI_REG8(0x3805), 0xb0 },
@@ -1768,35 +1777,36 @@ static int imx766_init_controls(struct imx766 *sensor)
 	u32 exposure_def;
 	int ret;
 
-	ret = v4l2_fwnode_device_parse(sensor->dev, &props);
-	if (ret)
-		return dev_err_probe(sensor->dev, ret,
-				"failed to parse fwnode properties\n");
-
-	ret = v4l2_ctrl_handler_init(hdl, 8);
-	if (ret)
-		return ret;
-
-	v4l2_ctrl_new_fwnode_properties(hdl, &imx766_ctrl_ops, &props);
-
 	mode = imx766_get_default_mode(sensor);
 	if (!mode)
 		return -EINVAL;
+
+	ret = v4l2_fwnode_device_parse(sensor->dev, &props);
+	if (ret)
+		return dev_err_probe(sensor->dev, ret,
+				     "failed to parse fwnode properties\n");
 
 	hblank = mode->line_length_pck - mode->width;
 
 	vblank_min = mode->min_frame_length_lines - mode->height;
 	vblank_def = mode->frame_length_lines - mode->height;
-	vblank_max = 65534 - mode->height;
+	vblank_max = IMX766_FRM_LENGTH_MAX - mode->height;
 
 	exposure_max = mode->frame_length_lines - IMX766_EXPOSURE_MARGIN;
 
 	exposure_def = clamp_t(u32, exposure_max / 2,
 			       mode->exposure_min, exposure_max);
 
-	ret = v4l2_ctrl_handler_init(hdl, 6);
+	ret = v4l2_ctrl_handler_init(hdl, 8);
 	if (ret)
 		return ret;
+
+	ret = v4l2_ctrl_new_fwnode_properties(hdl, &imx766_ctrl_ops,
+					      &props);
+	if (ret) {
+		v4l2_ctrl_handler_free(hdl);
+		return ret;
+	}
 
 	pixel_rate = imx766_get_pixel_rate(sensor, mode);
 
