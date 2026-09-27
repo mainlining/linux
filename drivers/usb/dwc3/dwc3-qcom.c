@@ -85,6 +85,7 @@ struct dwc3_qcom {
 	struct icc_path		*icc_path_apps;
 
 	enum usb_role		current_role;
+	bool reinit_phy_on_role_switch;
 };
 
 #define to_dwc3_qcom(d) container_of((d), struct dwc3_qcom, dwc)
@@ -558,12 +559,56 @@ static int dwc3_qcom_setup_irq(struct dwc3_qcom *qcom, struct platform_device *p
 	return 0;
 }
 
+static void dwc3_qcom_reinit_phys(struct dwc3_qcom *qcom)
+{
+	struct dwc3 *dwc = &qcom->dwc;
+	int i, ret;
+
+	for (i = 0; i < dwc->num_usb3_ports; i++)
+		phy_power_off(dwc->usb3_generic_phy[i]);
+	for (i = 0; i < dwc->num_usb2_ports; i++)
+		phy_power_off(dwc->usb2_generic_phy[i]);
+
+	for (i = 0; i < dwc->num_usb3_ports; i++)
+		phy_exit(dwc->usb3_generic_phy[i]);
+	for (i = 0; i < dwc->num_usb2_ports; i++)
+		phy_exit(dwc->usb2_generic_phy[i]);
+
+	for (i = 0; i < dwc->num_usb2_ports; i++) {
+		ret = phy_init(dwc->usb2_generic_phy[i]);
+		if (ret)
+			dev_err(qcom->dev, "usb2 phy-%d re-init failed: %d\n",
+				i, ret);
+	}
+	for (i = 0; i < dwc->num_usb3_ports; i++) {
+		ret = phy_init(dwc->usb3_generic_phy[i]);
+		if (ret)
+			dev_err(qcom->dev, "usb3 phy-%d re-init failed: %d\n",
+				i, ret);
+	}
+
+	for (i = 0; i < dwc->num_usb2_ports; i++)
+		phy_power_on(dwc->usb2_generic_phy[i]);
+	for (i = 0; i < dwc->num_usb3_ports; i++)
+		phy_power_on(dwc->usb3_generic_phy[i]);
+
+	dev_info(qcom->dev, "USB PHYs re-initialized\n");
+}
+
 static void dwc3_qcom_set_role_notifier(struct dwc3 *dwc, enum usb_role next_role)
 {
 	struct dwc3_qcom *qcom = to_dwc3_qcom(dwc);
 
 	if (qcom->current_role == next_role)
 		return;
+
+	/*
+	 * On some platforms the USB PHY stuks after a role switch or a hot-plug
+	 * controller, which leaves the port broken until a PHY reset.
+	 * Re-initialize the PHY on every (re-)entry into device or host mode.
+	 */
+	if (qcom->reinit_phy_on_role_switch && next_role != USB_ROLE_NONE)
+		dwc3_qcom_reinit_phys(qcom);
 
 	if (pm_runtime_resume_and_get(qcom->dev)) {
 		dev_dbg(qcom->dev, "Failed to resume device\n");
@@ -684,6 +729,9 @@ static int dwc3_qcom_probe(struct platform_device *pdev)
 		dwc3_qcom_select_utmi_clk(qcom);
 
 	qcom->mode = usb_get_dr_mode(dev);
+
+	qcom->reinit_phy_on_role_switch = device_property_read_bool(
+		dev, "qcom,reinit-phy-on-role-switch");
 
 	if (qcom->mode == USB_DR_MODE_HOST) {
 		qcom->current_role = USB_ROLE_HOST;
