@@ -1,0 +1,2 @@
+spec: .gear/kernel-image.spec
+diff: v7.1:. .
