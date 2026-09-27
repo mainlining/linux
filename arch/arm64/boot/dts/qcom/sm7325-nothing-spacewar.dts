@@ -1066,6 +1066,9 @@
 		reg = <0x34>;
 		reset-gpio = <&tlmm 101 GPIO_ACTIVE_HIGH>;
 
+		sound-channel = <0>;
+		sound-name-prefix = "Speaker Top";
+
 		#sound-dai-cells = <1>;
 	};
 
@@ -1074,6 +1077,9 @@
 			     "nxp,tfa9872";
 		reg = <0x35>;
 		reset-gpio = <&tlmm 101 GPIO_ACTIVE_HIGH>;
+
+		sound-channel = <1>;
+		sound-name-prefix = "Speaker Bottom";
 
 		#sound-dai-cells = <1>;
 	};
@@ -1459,12 +1465,19 @@
 	compatible = "nothing,spacewar-sndcard";
 	model = "NP1";
 
+	aux-devs = <&tfa9873_l>, <&tfa9873_r>;
+	widgets = "Speaker", "Speaker Top",
+		  "Speaker", "Speaker Bottom";
+	pin-switches = "Speaker Top", "Speaker Bottom";
+
 	pinctrl-0 = <&mi2s0_mclk &mi2s0_sclk &mi2s0_ws
 		     &mi2s0_data0 &mi2s0_data1>;
 	pinctrl-names = "default";
 
 	audio-routing = "IN1_HPHL", "HPHL_OUT",
 			"IN2_HPHR", "HPHR_OUT",
+			"Speaker Top", "Speaker Top Speaker",
+			"Speaker Bottom", "Speaker Bottom Speaker",
 			"AMIC1", "MIC BIAS1",
 			"AMIC2", "MIC BIAS2",
 			"AMIC3", "MIC BIAS3",
