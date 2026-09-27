@@ -1038,7 +1038,140 @@
 	clock-frequency = <100000>;
 	status = "okay";
 
-	/* awinic,aw21018 (Glyph LED) @ 20 */
+	aw21018: led-controller@20 {
+		compatible = "awinic,aw21018";
+		reg = <0x20>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		enable-gpios = <&tlmm 18 GPIO_ACTIVE_HIGH>;
+
+		awinic,global-current = /bits/ 8 <0x20>;
+
+		led@0 {
+			reg = <0x0>;
+			color = <LED_COLOR_ID_WHITE>;
+			function = "glyph-2";
+			led-scale = /bits/ 8 <0x50>;
+		};
+
+		led@1 {
+			reg = <0x1>;
+			color = <LED_COLOR_ID_WHITE>;
+			function = "glyph-3";
+			function-enumerator = <0>;
+			led-scale = /bits/ 8 <0xbd>;
+		};
+
+		led@2 {
+			reg = <0x2>;
+			color = <LED_COLOR_ID_WHITE>;
+			function = "glyph-3";
+			function-enumerator = <1>;
+			led-scale = /bits/ 8 <0xbd>;
+		};
+
+		led@3 {
+			reg = <0x3>;
+			color = <LED_COLOR_ID_WHITE>;
+			function = "glyph-3";
+			function-enumerator = <2>;
+			led-scale = /bits/ 8 <0xbf>;
+		};
+
+		led@4 {
+			reg = <0x4>;
+			color = <LED_COLOR_ID_WHITE>;
+			function = "glyph-3";
+			function-enumerator = <3>;
+			led-scale = /bits/ 8 <0xbf>;
+		};
+
+		led@6 {
+			reg = <0x6>;
+			color = <LED_COLOR_ID_WHITE>;
+			function = "glyph-1";
+			led-scale = /bits/ 8 <0xe9>;
+		};
+
+		led@7 {
+			reg = <0x7>;
+			color = <LED_COLOR_ID_WHITE>;
+			function = "glyph-4";
+			function-enumerator = <7>;
+			led-scale = /bits/ 8 <0x07>;
+		};
+
+		led@8 {
+			reg = <0x8>;
+			color = <LED_COLOR_ID_WHITE>;
+			function = "glyph-4";
+			function-enumerator = <2>;
+			led-scale = /bits/ 8 <0x07>;
+		};
+
+		led@9 {
+			reg = <0x9>;
+			color = <LED_COLOR_ID_WHITE>;
+			function = "glyph-4";
+			function-enumerator = <4>;
+			led-scale = /bits/ 8 <0x07>;
+		};
+
+		led@a {
+			reg = <0xa>;
+			color = <LED_COLOR_ID_WHITE>;
+			function = "glyph-4";
+			function-enumerator = <1>;
+			led-scale = /bits/ 8 <0x07>;
+		};
+
+		led@b {
+			reg = <0xb>;
+			color = <LED_COLOR_ID_WHITE>;
+			function = "glyph-4";
+			function-enumerator = <3>;
+			led-scale = /bits/ 8 <0x07>;
+		};
+
+		led@c {
+			reg = <0xc>;
+			color = <LED_COLOR_ID_WHITE>;
+			function = "glyph-4";
+			function-enumerator = <0>;
+			led-scale = /bits/ 8 <0x07>;
+		};
+
+		led@d {
+			reg = <0xd>;
+			color = <LED_COLOR_ID_WHITE>;
+			function = "glyph-4";
+			function-enumerator = <5>;
+			led-scale = /bits/ 8 <0x07>;
+		};
+
+		led@e {
+			reg = <0xe>;
+			color = <LED_COLOR_ID_WHITE>;
+			function = "glyph-4";
+			function-enumerator = <6>;
+			led-scale = /bits/ 8 <0x07>;
+		};
+
+		led@f {
+			reg = <0xf>;
+			color = <LED_COLOR_ID_WHITE>;
+			function = "glyph-5";
+			led-scale = /bits/ 8 <0x07>;
+		};
+
+		led@10 {
+			reg = <0x10>;
+			color = <LED_COLOR_ID_RED>;
+			function = "camera";
+			led-scale = /bits/ 8 <0x2a>;
+		};
+	};
 
 	typec-mux@42 {
 		compatible = "fcs,fsa4480";
