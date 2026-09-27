@@ -1957,6 +1957,8 @@
 &usb_1 {
 	/* USB 2.0 only */
 	qcom,select-utmi-as-pipe-clk;
+	/* USB PHY gets stuck after hot-plug/role switch */
+	qcom,reinit-phy-on-role-switch;
 	dr_mode = "otg";
 	usb-role-switch;
 	maximum-speed = "high-speed";
