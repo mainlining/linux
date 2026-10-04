@@ -114,7 +114,7 @@ static int tfa98xx_spkg_put(struct snd_kcontrol *kcontrol,
 }
 
 #define TFA98XX_SPKG(reg, shift) \
-	SOC_SINGLE_EXT_TLV("Speaker Driver Playback Volume", reg, shift, \
+	SOC_SINGLE_EXT_TLV("Volume", reg, shift, \
 			   15, 0, snd_soc_get_volsw, tfa98xx_spkg_put, \
 			   tfa98xx_spkg_tlv)
 
